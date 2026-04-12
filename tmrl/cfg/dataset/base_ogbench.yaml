@@ -1,0 +1,6 @@
+dir: ${paths.data_dir}/ogbench
+
+goal_dim: ??
+
+defaults:
+  - base

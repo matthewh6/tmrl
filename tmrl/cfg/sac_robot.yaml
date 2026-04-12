@@ -1,0 +1,68 @@
+# training
+train_steps: 10_000
+capacity: ${train_steps}
+eval_interval: 1_000
+render_videos: True
+ckpt: null
+
+checkpoint:
+  save_interval: ${eval_interval}
+  resume_path: null
+
+# sac
+n_envs: 1
+n_evals: 10
+n_viz: 5
+skip_first: False
+action_exec_len: 5 # query freq: from DSRL, for libero
+
+q_lr: 3e-4
+policy_lr: 3e-4
+learning_starts: 100
+use_offline: False
+use_autotune: True
+use_success_buffer: True
+hidden_dim: 1024
+
+# method
+method: tmrl    # tmrl | dsrl
+noise_bound: 1.0 # sac noise action bound
+context_noise_bound: 1.0 # context noise bound
+timestep_max: 1.0
+actor_action_dim: 32
+fixed_tcont_context: null
+
+# widowx
+robot_ip: "192.168.1.100"
+robot_port: 5556
+server_port: 6000
+image_resolution: 224
+
+remote_robot:
+  # WidowX
+  # host: "jessezhang.a.pinggy.link"
+  # port: 14819
+
+  # DROID
+  host: "jessezhang2.a.pinggy.link"
+  port: 25363
+
+  # DROID
+  # host: "marius.a.pinggy.link"
+  # port: 21379
+
+  connect_timeout: 300.0  # Connection timeout in seconds (5 min default for remote)
+
+obs_format: "widowx"
+
+optimizer:
+  lr: 1e-3
+  weight_decay: 1e-4
+  betas: [0.95, 0.999]
+  eps: 1e-8
+
+defaults:
+  - base
+  - dataset: base_widowx
+  - model: sac_robot
+  - _self_

@@ -1,0 +1,9 @@
+name: libero_goal
+
+task_id: 6
+
+max_ep_steps: 300
+discount: 0.99
+
+defaults:
+  - base_libero

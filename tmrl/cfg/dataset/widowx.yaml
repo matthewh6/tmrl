@@ -1,0 +1,9 @@
+name: widowx
+
+obs_dim: 768
+state_dim: 7
+action_dim: 7
+action_len: 32
+
+defaults:
+- base_robot

@@ -1,0 +1,14 @@
+name: pointmaze-giant-navigate-v0
+
+obs_dim: 4
+state_dim: 0
+action_dim: 2
+action_len: 32
+goal_dim: 0
+context_dim: ${dataset.obs_dim}
+
+max_ep_steps: 1000
+discount: 0.995
+
+defaults:
+  - base_ogbench

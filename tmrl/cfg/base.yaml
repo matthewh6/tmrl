@@ -1,0 +1,27 @@
+# @package _global_
+
+debug: False
+seed: 42
+ckpt_file: null
+
+use_wandb: false
+tags: null
+wandb:
+  entity: hongmm
+  name: "${hydra:runtime.choices.model}_${hydra:runtime.choices.dataset}_${now:%m%d_%H%M}"
+  tags: ${tags}
+  dir: ${paths.wandb_dir}
+
+optimizer:
+  lr: 3e-4
+  weight_decay: 1e-6
+  betas: [0.95, 0.999]
+  eps: 1e-8
+
+scheduler:
+  name: "constant"
+
+hidden_dim: 128
+  
+defaults:
+  - local: default

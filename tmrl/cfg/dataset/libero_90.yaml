@@ -1,0 +1,9 @@
+name: libero_90
+
+task_id: 51
+
+max_ep_steps: 200
+discount: 0.99
+
+defaults:
+  - base_libero

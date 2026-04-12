@@ -1,0 +1,17 @@
+# training
+train_steps: 200_000
+log_interval: 25_000
+save_interval: 25_000
+
+n_envs: 3
+
+# postbc
+use_postbc: false
+postbc_alpha: 1.0
+postbc_ensemble_size: 10
+postbc_ensemble_epochs: 1000
+
+defaults:
+  - base
+  - model: gsfp
+  - dataset: pointmaze-giant-navigate-v0

@@ -1,0 +1,15 @@
+num_train_steps: 100
+num_inference_steps: 10
+timeshift: 1.0
+beta_sampling: true
+
+# CFG
+use_cfg: False # controls dropout
+p_uncond: 0.1
+cfg_scale_max: 10.0 # max cfg scale used for tmrl_cfg
+
+# DiT
+embed_dim: 256
+num_layers: 4
+num_heads: 4
+mlp_ratio: 4.0

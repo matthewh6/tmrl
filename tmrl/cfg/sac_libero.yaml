@@ -1,0 +1,39 @@
+# training
+ckpt: null
+train_steps: 1_000_000
+capacity: ${train_steps}
+eval_interval: 25_000
+save_interval: 25_000
+skip_first: False
+n_envs: 4
+n_evals: 20
+n_viz: 5
+render_videos: True
+
+# sac
+q_lr: 3e-4
+policy_lr: 3e-4
+learning_starts: 500
+use_offline: False
+use_autotune: True
+use_success_buffer: False
+action_exec_len: 5 # open loop action execution length
+
+# method
+method: tmrl      # [tmrl, dsrl, rlpd]
+noise_bound: 1.0
+context_noise_bound: 1.0
+timestep_max: 1.0
+fixed_tcont_context: null  # if set (e.g. 0.5), uses a fixed conditioning timestep instead of learning it
+actor_action_dim: 32
+
+# libero/libero-pro
+num_steps_wait: 25
+perturbation: null # libero-pro perturbations [env, swap, object, lan, task]
+
+defaults:
+  - base
+  - model: sac_libero
+  - dataset: base_libero
+  - _self_
+  

@@ -1,0 +1,11 @@
+dir: ${paths.data_dir}
+batch_size: 256
+
+obs_dim: ??
+state_dim: ??
+action_dim: ??
+action_len: ??
+context_dim: ?? # for TMRL, the dimension of the context being noised
+
+max_ep_steps: ??
+discount: ??

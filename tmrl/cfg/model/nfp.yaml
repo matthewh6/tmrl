@@ -1,0 +1,9 @@
+_target_: tmrl.models.flow.ContextSmoothedFlowPolicy
+obs_dim: ${dataset.obs_dim}
+action_len: ${dataset.action_len}
+action_dim: ${dataset.action_dim}
+goal_dim: 0
+context_dim: ${dataset.obs_dim}
+
+defaults:
+  - flow

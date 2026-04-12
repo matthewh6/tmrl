@@ -1,0 +1,23 @@
+_target_: tmrl.models.sac_agent.SACAgent
+
+method: ${method}
+obs_dim: ${dataset.obs_dim}
+state_dim: ${dataset.state_dim}
+action_dim: ${actor_action_dim}
+action_len: 1 # TODO: action noise
+
+use_autotune: ${use_autotune}
+noise_bound: ${noise_bound}
+context_noise_bound: ${context_noise_bound}
+context_dim: ${dataset.context_dim}
+
+hidden_dim: 1024
+n_critics: 10
+n_layers: 3
+
+discount: ${dataset.discount}
+tau: 0.005
+
+critic_updates_per_actor_update: 20
+use_noise_critic: False
+fixed_tcont_context: ${fixed_tcont_context}
