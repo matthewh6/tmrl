@@ -241,7 +241,7 @@ def main(cfg):
             actions = infer_actions(cfg, model, raw_obs, action_noise, timesteps, context_noise)
             actions = actions[:action_exec_len]
             actions = np.asarray(actions, dtype=np.float32)
-            actions = np.clip(actions, -1, 1)
+            # actions = np.clip(actions, -1, 1)
 
         # Capture frame from pre-step obs
         frame = raw_obs.get('observation/exterior_image_1_left', raw_obs.get('observation/image'))
@@ -296,7 +296,6 @@ def main(cfg):
             wrist_frames.clear()
 
             obs, _ = env.reset()
-            step_count = 0
         else:
             obs = next_obs
 
@@ -308,11 +307,10 @@ def main(cfg):
             log_data.update(model.update(**batch, optimizers=optimizers))
 
         # Metrics
-        if cml_rollouts >= 10:
-            log_data['online/cml_success_rate'] = cml_success / cml_rollouts
         log_data.update({
             'online/cml_success': int(cml_success),
             'online/cml_rollouts': cml_rollouts,
+            'online/cml_success_rate': cml_success / cml_rollouts
             'online/action_noise_min': action_noise.min(),
             'online/action_noise_mean': action_noise.mean(),
             'online/action_noise_max': action_noise.max(),
@@ -328,7 +326,8 @@ def main(cfg):
             })
 
         if cfg.use_wandb and log_data:
-            log_data['global_step'] = step
+            log_data['learning_step'] = step
+            log_data['env_step'] = step_count
             wandb.log(log_data)
 
     env.close()

@@ -12,13 +12,15 @@ noise_bound: ${noise_bound}
 context_noise_bound: ${context_noise_bound}
 context_dim: 2048
 
-hidden_dim: 1024
-n_critics: 10
+hidden_dim: 512
+n_critics: 5
 n_layers: 3
 
 discount: ${dataset.discount}
 tau: 0.005
 
-critic_updates_per_actor_update: 20
+critic_updates_per_step: 20
+actor_updates_per_step: 5
+
 use_noise_critic: False
 fixed_tcont_context: ${fixed_tcont_context}
