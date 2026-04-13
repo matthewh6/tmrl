@@ -9,7 +9,7 @@
 	url = git@github.com:matthewh6/LIBERO-PRO.git
 [submodule "dsrl_openpi"]
 	path = dsrl_openpi
-	url = git@github.com:jesbu1/dsrl_openpi.git
+	url = git@github.com:matthewh6/tmrl_openpi.git
 [submodule "ogbench"]
 	path = ogbench
 	url = git@github.com:matthewh6/ogbench.git
