@@ -22,7 +22,7 @@
 
 ### Prerequisites
 
-- **Python 3.11** (required by the `dsrl_openpi` submodule)
+- **Python 3.11** (required by the `tmrl_openpi` submodule)
 - [**uv**](https://docs.astral.sh/uv/getting-started/installation/)
 - CUDA 12.x (for JAX and PyTorch GPU support)
 
@@ -45,10 +45,10 @@ source .venv/bin/activate
 
 # Apply the transformers library patches:
 uv pip install transformers==4.53.2
-cp -r dsrl_openpi/src/dsrl_openpi/models_pytorch/transformers_replace/* .venv/lib/python3.11/site-packages/transformers/
+cp -r tmrl_openpi/src/tmrl_openpi/models_pytorch/transformers_replace/* .venv/lib/python3.11/site-packages/transformers/
 ```
 
-This single `uv sync` installs both `dsrl_openpi` (JAX, flax, openpi) and all `tmrl` deps into one `.venv` at the project root.
+This single `uv sync` installs both `tmrl_openpi` (JAX, flax, openpi) and all `tmrl` deps into one `.venv` at the project root.
 
 ### 3. Install OGBench/LIBERO for sim experiments
 

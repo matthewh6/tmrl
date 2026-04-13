@@ -215,8 +215,8 @@ def load_pi0_model(cfg):
     Returns:
         The pi0 policy model.
     """
-    from dsrl_openpi.policies import policy_config as _policy_config
-    from dsrl_openpi.training import config as _config
+    from tmrl_openpi.policies import policy_config as _policy_config
+    from tmrl_openpi.training import config as _config
 
     # If cfg.ckpt is already a full path, use it directly
     if os.path.isabs(cfg.ckpt):

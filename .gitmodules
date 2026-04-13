@@ -7,8 +7,8 @@
 [submodule "LIBERO_PRO"]
 	path = LIBERO_PRO
 	url = git@github.com:matthewh6/LIBERO-PRO.git
-[submodule "dsrl_openpi"]
-	path = dsrl_openpi
+[submodule "tmrl_openpi"]
+	path = tmrl_openpi
 	url = git@github.com:matthewh6/tmrl_openpi.git
 [submodule "ogbench"]
 	path = ogbench
