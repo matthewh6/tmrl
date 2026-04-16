@@ -13,6 +13,7 @@ from gymnasium.spaces import Box
 
 # Need to set the multiprocessing start method to 'spawn' to avoid the error: https://github.com/Lifelong-Robot-Learning/LIBERO/issues/3#issuecomment-1868387638
 import multiprocessing
+
 if multiprocessing.get_start_method(allow_none=True) != 'spawn':
     multiprocessing.set_start_method('spawn', force=True)
 
@@ -55,9 +56,7 @@ class CubeInfoWrapper(gymnasium.Wrapper):
         super().__init__(env)
         obs_dim = env.observation_space.shape[0]
         self.goal_dim = goal_dim
-        self.observation_space = Box(
-            low=-np.inf, high=np.inf, shape=(obs_dim + goal_dim,), dtype=np.float32
-        )
+        self.observation_space = Box(low=-np.inf, high=np.inf, shape=(obs_dim + goal_dim,), dtype=np.float32)
 
     def _get_goal(self) -> np.ndarray:
         return self.env.unwrapped.cur_task_info['goal_xyzs'].flatten().astype(np.float32)
@@ -222,7 +221,7 @@ def make_libero_env(
         'bddl_file_name': task_bddl_file,
         'camera_heights': height,
         'camera_widths': width,
-        'has_renderer': False,           # disable on-screen renderer (required for SubprocVectorEnv / headless)
+        'has_renderer': False,  # disable on-screen renderer (required for SubprocVectorEnv / headless)
         'has_offscreen_renderer': True,  # enable GPU offscreen rendering via EGL
         'use_camera_obs': True,
     }
@@ -357,9 +356,7 @@ def setup_envs(
             )
             for i in range(cfg.n_evals)
         ]
-        eval_env = gymnasium.vector.SyncVectorEnv(
-            env_fns, autoreset_mode=gymnasium.vector.AutoresetMode.DISABLED
-        )
+        eval_env = gymnasium.vector.SyncVectorEnv(env_fns, autoreset_mode=gymnasium.vector.AutoresetMode.DISABLED)
 
     return env, eval_env
 

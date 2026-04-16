@@ -87,7 +87,6 @@ def evaluate_policy_ogbench(
     env_step = 0
 
     while not np.all(done):
-
         with torch.no_grad():
             inputs = to_tensor(obs)
             (actor_actions, timesteps, context_noise), _, _ = model.actor.get_action(inputs)
@@ -244,8 +243,8 @@ def evaluate_policy_libero(
 
     # Evaluation config
     max_ep_steps = cfg.dataset.max_ep_steps
-    uses_chunking = cfg.method in ["tmrl", "dsrl", "spirl"]
-    uses_timesteps = cfg.method == "tmrl"
+    uses_chunking = cfg.method in ['tmrl', 'dsrl', 'spirl']
+    uses_timesteps = cfg.method == 'tmrl'
     action_exec_len = cfg.action_exec_len if uses_chunking else 1
 
     # Logging state
@@ -264,12 +263,10 @@ def evaluate_policy_libero(
     while alive and steps < max_ep_steps:
         # Inference
         with torch.no_grad():
-            image = to_tensor(obs["observation/image"]).permute(0, 3, 1, 2)
-            obs["observation/image_emb"] = to_tensor(image_encoder(image))
+            image = to_tensor(obs['observation/image']).permute(0, 3, 1, 2)
+            obs['observation/image_emb'] = to_tensor(image_encoder(image))
 
-            inputs = torch.cat(
-                [to_tensor(obs["observation/state"]), obs["observation/image_emb"]], dim=-1
-            )
+            inputs = torch.cat([to_tensor(obs['observation/state']), obs['observation/image_emb']], dim=-1)
             _, _, (action_noise, timesteps, context_noise) = model.actor.get_action(inputs)
             action_noise = action_noise.cpu().numpy()
 
@@ -300,16 +297,16 @@ def evaluate_policy_libero(
                     rewards[e] += reward_step[e]
 
                     if e < n_viz and steps % 3 == 0:
-                        current_frame = obs_step["observation/image"][e]
+                        current_frame = obs_step['observation/image'][e]
                         current_frame = np.clip(current_frame.astype(np.float32) * 1.3, 0, 255).astype(np.uint8)
                         frames[e].append(current_frame)
 
             newly_done = [e for e in alive if done_step[e] and not dones[e]]
             if newly_done:
                 for e in newly_done:
-                    log(f"[SUCCESSFUL ENV]: {info_step[alive.index(e)]['language_instruction']}")
+                    log(f'[SUCCESSFUL ENV]: {info_step[alive.index(e)]["language_instruction"]}')
                     dones[e] = True
-                env.reset(newly_done) # reset newly done envs, but treat them as dead envs
+                env.reset(newly_done)  # reset newly done envs, but treat them as dead envs
 
             steps += 1
             if steps >= max_ep_steps:
@@ -333,27 +330,27 @@ def evaluate_policy_libero(
             arr = np.stack(padded, axis=0).transpose(1, 0, 2, 3, 4)
             F, n, H, W, C = arr.shape
             arr = arr.transpose(0, 2, 1, 3, 4).reshape(F, H, n * W, C).transpose(0, 3, 1, 2)
-            log_data["eval/viz"] = wandb.Video(
-                arr, fps=10, format="mp4", caption=info[0]["language_instruction"]
-            )
+            log_data['eval/viz'] = wandb.Video(arr, fps=10, format='mp4', caption=info[0]['language_instruction'])
 
     log(
-        f"eval at step {step} — success: {np.mean(dones):.2f} ({np.sum(dones)}/{len(dones)}), "
-        f"len: {np.mean(ep_lengths):.1f}±{np.std(ep_lengths):.1f}"
+        f'eval at step {step} — success: {np.mean(dones):.2f} ({np.sum(dones)}/{len(dones)}), '
+        f'len: {np.mean(ep_lengths):.1f}±{np.std(ep_lengths):.1f}'
     )
 
     mean_action_dist = np.mean([np.mean(d) for d in action_dists])
-    log_data["eval/action_noise_dist"] = mean_action_dist
+    log_data['eval/action_noise_dist'] = mean_action_dist
 
     if dones.any():
         success_idxs = np.where(dones)[0]
-        log_data["eval/success_action_noise_dist"] = np.mean([np.mean(action_dists[e]) for e in success_idxs])
+        log_data['eval/success_action_noise_dist'] = np.mean([np.mean(action_dists[e]) for e in success_idxs])
 
-    log_data.update({
-        "eval/success": np.mean(dones),
-        "eval/ep_len": np.mean(ep_lengths),
-        "eval/time": time.time() - start,
-    })
+    log_data.update(
+        {
+            'eval/success': np.mean(dones),
+            'eval/ep_len': np.mean(ep_lengths),
+            'eval/time': time.time() - start,
+        }
+    )
 
     if owns_env:
         env.close()
@@ -382,7 +379,6 @@ def evaluate_policy_robot(
     n_viz = min(getattr(cfg, 'n_viz', 1), n_evals)
     action_exec_len = cfg.action_exec_len
 
-
     all_rewards = []
     all_steps = []
     all_success = []
@@ -408,7 +404,9 @@ def evaluate_policy_robot(
             obs = embed_images(obs, image_encoder)
             inputs = torch.cat([to_tensor(obs['state'][None, :]), to_tensor(obs['observation/image_emb'])], dim=-1)
             with torch.no_grad():
-                (action_noise, timesteps, context_noise), (log_prob_a, log_prob_t, log_prob_p), _ = (model.actor.get_action(inputs))
+                (action_noise, timesteps, context_noise), (log_prob_a, log_prob_t, log_prob_p), _ = (
+                    model.actor.get_action(inputs)
+                )
 
             action_noise = action_noise.cpu().detach().numpy()
             if cfg.method == 'tmrl':
@@ -475,22 +473,32 @@ def evaluate_policy_robot(
         log(f'  Avg logp_context: {np.mean(all_logp_p):.3f}')
     flat_timesteps = [t for ep in all_timesteps for t in ep]
     if flat_timesteps:
-        log(f'  Timesteps — mean: {np.mean(flat_timesteps):.3f}  std: {np.std(flat_timesteps):.3f}  min: {np.min(flat_timesteps):.3f}  max: {np.max(flat_timesteps):.3f}')
+        log(
+            f'  Timesteps — mean: {np.mean(flat_timesteps):.3f}  std: {np.std(flat_timesteps):.3f}  min: {np.min(flat_timesteps):.3f}  max: {np.max(flat_timesteps):.3f}'
+        )
         for i, ep_ts in enumerate(all_timesteps):
             log(f'    ep {i}: {[f"{t:.3f}" for t in ep_ts]}')
 
-    log_data.update({
-        'eval/avg_reward': avg_reward,
-        'eval/success_rate': success_rate,
-        'eval/avg_steps': avg_steps,
-        **({'eval/logp_action': float(np.mean(all_logp_a))} if all_logp_a else {}),
-        **({'eval/logp_timestep': float(np.mean(all_logp_t))} if all_logp_t else {}),
-        **({'eval/logp_context': float(np.mean(all_logp_p))} if all_logp_p else {}),
-        **({'eval/timestep_mean': float(np.mean(flat_timesteps)),
-            'eval/timestep_std': float(np.std(flat_timesteps)),
-            'eval/timestep_values': flat_timesteps,
-            'eval/timestep_sequences': all_timesteps} if flat_timesteps else {}),
-    })
+    log_data.update(
+        {
+            'eval/avg_reward': avg_reward,
+            'eval/success_rate': success_rate,
+            'eval/avg_steps': avg_steps,
+            **({'eval/logp_action': float(np.mean(all_logp_a))} if all_logp_a else {}),
+            **({'eval/logp_timestep': float(np.mean(all_logp_t))} if all_logp_t else {}),
+            **({'eval/logp_context': float(np.mean(all_logp_p))} if all_logp_p else {}),
+            **(
+                {
+                    'eval/timestep_mean': float(np.mean(flat_timesteps)),
+                    'eval/timestep_std': float(np.std(flat_timesteps)),
+                    'eval/timestep_values': flat_timesteps,
+                    'eval/timestep_sequences': all_timesteps,
+                }
+                if flat_timesteps
+                else {}
+            ),
+        }
+    )
 
     if frames is not None:
         max_len = max((len(f) for f in frames), default=0)
@@ -500,11 +508,10 @@ def evaluate_policy_robot(
         valid = [f for f in frames if f]
         if valid:
             ref_shape = valid[0][0].shape[:2]  # (H, W) from first frame
-            def _resize_frames(
-                episode_frames: list[np.ndarray], shape: tuple[int, int]
-            ) -> list[np.ndarray]:
-                return [cv2.resize(fr, (shape[1], shape[0])) if fr.shape[:2] != shape else fr
-                        for fr in episode_frames]
+
+            def _resize_frames(episode_frames: list[np.ndarray], shape: tuple[int, int]) -> list[np.ndarray]:
+                return [cv2.resize(fr, (shape[1], shape[0])) if fr.shape[:2] != shape else fr for fr in episode_frames]
+
             valid = [_resize_frames(f, ref_shape) for f in valid]
             arr = np.concatenate([np.stack(f) for f in valid], axis=2)
             log_data['eval/video'] = wandb.Video(arr.transpose(0, 3, 1, 2), fps=10, format='mp4')

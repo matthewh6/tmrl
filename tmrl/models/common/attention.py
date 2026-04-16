@@ -232,7 +232,9 @@ class CrossAttentionBlock(nn.Module):
             drop=drop,
         )
 
-    def forward(self, x: Tensor, c: Tensor, x_pos_embed: Tensor | None = None, c_pos_embed: Tensor | None = None) -> Tensor:
+    def forward(
+        self, x: Tensor, c: Tensor, x_pos_embed: Tensor | None = None, c_pos_embed: Tensor | None = None
+    ) -> Tensor:
         x = x + self.xattn(x, self.norm1(c), x_pos_embed, c_pos_embed)
         x = x + self.mlp(self.norm2(x))
         return x
@@ -285,7 +287,9 @@ class MixedAttentionBlock(nn.Module):
             drop=drop,
         )
 
-    def forward(self, x: Tensor, c: Tensor, x_pos_embed: Tensor | None = None, c_pos_embed: Tensor | None = None) -> Tensor:
+    def forward(
+        self, x: Tensor, c: Tensor, x_pos_embed: Tensor | None = None, c_pos_embed: Tensor | None = None
+    ) -> Tensor:
         x = x + self.attn(self.norm1(x), x_pos_embed)
         x = x + self.xattn(self.norm2(x), c, x_pos_embed, c_pos_embed)
         x = x + self.mlp(self.norm3(x))

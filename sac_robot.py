@@ -13,7 +13,12 @@ from tmrl.utils.logging import cprint
 from tmrl.utils.eval import evaluate_policy_robot
 from tmrl.utils.remote_env import make_remote_env
 from tmrl.utils.common import (
-    set_seed, to_device, load_pi0_model, to_tensor, create_optimizers, infer_actions,
+    set_seed,
+    to_device,
+    load_pi0_model,
+    to_tensor,
+    create_optimizers,
+    infer_actions,
 )
 from tmrl.utils.obs import embed_images
 from tmrl.models.common.vision import Dinov2withNorm
@@ -27,14 +32,15 @@ def sample_random_actions(
     cfg: object, n_envs: int, action_dim: int, context_dim: int
 ) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None]:
     """Sample random actions for replay buffer warm-up."""
-    action_noise = np.random.uniform(
-        low=-cfg.noise_bound, high=cfg.noise_bound, size=(n_envs, action_dim)
-    ).astype(np.float32)
+    action_noise = np.random.uniform(low=-cfg.noise_bound, high=cfg.noise_bound, size=(n_envs, action_dim)).astype(
+        np.float32
+    )
     timesteps = context_noise = None
     if cfg.method == 'tmrl':
         timesteps = np.random.uniform(low=-1.0, high=1.0, size=(n_envs, 1)).astype(np.float32)
         context_noise = np.random.uniform(
-            low=-cfg.context_noise_bound, high=cfg.context_noise_bound,
+            low=-cfg.context_noise_bound,
+            high=cfg.context_noise_bound,
             size=(n_envs, context_dim),
         ).astype(np.float32)
     return action_noise, timesteps, context_noise
@@ -176,15 +182,24 @@ def main(cfg: object) -> None:
 
     sep = '=' * 70
     log(f'{sep}\nTraining/Environment dimensions:\n{sep}')
-    log(f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | action_exec_len: {action_exec_len}')
-    log(f'noise_bound: {cfg.noise_bound} | timestep_max: {timestep_max} | context_noise_bound: {cfg.context_noise_bound}')
+    log(
+        f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | action_exec_len: {action_exec_len}'
+    )
+    log(
+        f'noise_bound: {cfg.noise_bound} | timestep_max: {timestep_max} | context_noise_bound: {cfg.context_noise_bound}'
+    )
     log(sep)
 
     # Replay buffer
     rb_kwargs = dict(
-        method=cfg.method, dataset_name=cfg.dataset.name, capacity=cfg.capacity,
-        n_envs=n_envs, obs_dim=obs_dim+state_dim, action_dim=action_dim,
-        action_len=action_len, discount=cfg.dataset.discount,
+        method=cfg.method,
+        dataset_name=cfg.dataset.name,
+        capacity=cfg.capacity,
+        n_envs=n_envs,
+        obs_dim=obs_dim + state_dim,
+        action_dim=action_dim,
+        action_len=action_len,
+        discount=cfg.dataset.discount,
         use_success_buffer=cfg.use_success_buffer,
         context_dim=getattr(model, 'context_dim', 0),
     )
@@ -211,7 +226,9 @@ def main(cfg: object) -> None:
 
     log(f'Running {cfg.method} on dataset: {cfg.dataset.name} with task: {instruction}')
 
-    for step in tqdm(range(start_step, cfg.train_steps + 1), total=cfg.train_steps, initial=start_step, dynamic_ncols=True):
+    for step in tqdm(
+        range(start_step, cfg.train_steps + 1), total=cfg.train_steps, initial=start_step, dynamic_ncols=True
+    ):
         log_data = {}
 
         # Checkpointing
@@ -223,7 +240,12 @@ def main(cfg: object) -> None:
         if (step - start_step) % cfg.eval_interval == 0 and not (cfg.skip_first and step == start_step):
             model.eval()
             evaluate_policy_robot(
-                cfg=cfg, eval_env=env, model=model, log_data=log_data, step=step, image_encoder=image_encoder,
+                cfg=cfg,
+                eval_env=env,
+                model=model,
+                log_data=log_data,
+                step=step,
+                image_encoder=image_encoder,
             )
             model.train()
 
@@ -293,7 +315,9 @@ def main(cfg: object) -> None:
                 log_key = 'online/ep_success' if is_success else 'online/ep'
                 log_data[log_key] = wandb.Video(np.array(frames).transpose(0, 3, 1, 2), fps=15, format='mp4')
                 if wrist_frames:
-                    log_data[log_key + '_wrist'] = wandb.Video(np.array(wrist_frames).transpose(0, 3, 1, 2), fps=15, format='mp4')
+                    log_data[log_key + '_wrist'] = wandb.Video(
+                        np.array(wrist_frames).transpose(0, 3, 1, 2), fps=15, format='mp4'
+                    )
 
             frames.clear()
             wrist_frames.clear()
@@ -306,27 +330,33 @@ def main(cfg: object) -> None:
         if step - start_step >= cfg.learning_starts:
             if step - start_step == cfg.learning_starts:
                 log(f'Learning starts at step {step}')
-            batch = to_device(rb.sample(batch_size=cfg.dataset.batch_size * cfg.model.critic_updates_per_actor_update), device)
+            batch = to_device(
+                rb.sample(batch_size=cfg.dataset.batch_size * cfg.model.critic_updates_per_actor_update), device
+            )
             log_data.update(model.update(**batch, optimizers=optimizers))
 
         # Metrics
-        log_data.update({
-            'online/cml_success': int(cml_success),
-            'online/cml_rollouts': cml_rollouts,
-            'online/cml_success_rate': (cml_success / cml_rollouts) if cml_rollouts > 0 else 0.0,
-            'online/action_noise_min': action_noise.min(),
-            'online/action_noise_mean': action_noise.mean(),
-            'online/action_noise_max': action_noise.max(),
-        })
+        log_data.update(
+            {
+                'online/cml_success': int(cml_success),
+                'online/cml_rollouts': cml_rollouts,
+                'online/cml_success_rate': (cml_success / cml_rollouts) if cml_rollouts > 0 else 0.0,
+                'online/action_noise_min': action_noise.min(),
+                'online/action_noise_mean': action_noise.mean(),
+                'online/action_noise_max': action_noise.max(),
+            }
+        )
         if cfg.method == 'tmrl':
-            log_data.update({
-                'online/timesteps_min': timesteps.min(),
-                'online/timesteps_mean': timesteps.mean(),
-                'online/timesteps_max': timesteps.max(),
-                'online/context_noises_min': context_noise.min(),
-                'online/context_noises_mean': context_noise.mean(),
-                'online/context_noises_max': context_noise.max(),
-            })
+            log_data.update(
+                {
+                    'online/timesteps_min': timesteps.min(),
+                    'online/timesteps_mean': timesteps.mean(),
+                    'online/timesteps_max': timesteps.max(),
+                    'online/context_noises_min': context_noise.min(),
+                    'online/context_noises_mean': context_noise.mean(),
+                    'online/context_noises_max': context_noise.max(),
+                }
+            )
 
         if cfg.use_wandb and log_data:
             log_data['learning_step'] = step

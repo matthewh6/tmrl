@@ -92,7 +92,11 @@ class NoisePredNet(nn.Module):
         self.initialize_weights()
 
     def forward(
-        self, action: Tensor, t_action: Tensor, global_cond: Tensor, t_context: Tensor = None,
+        self,
+        action: Tensor,
+        t_action: Tensor,
+        global_cond: Tensor,
+        t_context: Tensor = None,
     ) -> Tensor:
         device = action.device
 
@@ -112,7 +116,7 @@ class NoisePredNet(nn.Module):
             t_emb = self.timestep_embedding(t_context, t_action)
         else:
             t_emb = self.timestep_embedding(t_action)
-            
+
         # Global conditioning
         global_cond_emb = self.global_cond_embedding(global_cond)
         cond = torch.cat((t_emb, global_cond_emb), dim=1)

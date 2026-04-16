@@ -159,6 +159,7 @@ def load_data_dict(cfg: DictConfig, training: bool = True) -> tuple[dict[str, np
         # Ensure oracle_reps are computed (may be missing depending on ogbench version)
         if 'oracle_reps' not in train_dict:
             from ogbench.relabel_utils import add_oracle_reps
+
             env_name = '-'.join(dataset_name.split('-')[:-2] + dataset_name.split('-')[-1:])
             add_oracle_reps(env_name, env, train_dict)
             add_oracle_reps(env_name, env, val_dict)
@@ -170,7 +171,7 @@ def load_data_dict(cfg: DictConfig, training: bool = True) -> tuple[dict[str, np
     # if 'cube' in dataset_name:
     #     # Block x positions: robot has 14 DOF, each cube freejoint adds 7 (3 pos + 4 quat)
     #     block0_x = train_dict['qpos'][:, 14]
-        
+
     #     mask = block0_x <= 0.4
     #     if 'double' in dataset_name:
     #         mask = block0_x <= 0.4
@@ -182,10 +183,10 @@ def load_data_dict(cfg: DictConfig, training: bool = True) -> tuple[dict[str, np
     #         # block1_z = train_dict['qpos'][:, 23]
     #         # block0_xy = train_dict['qpos'][:, 14:16]
     #         # block1_xy = train_dict['qpos'][:, 21:23]
-            
+
     #         # xy_dist = np.linalg.norm(block0_xy - block1_xy, axis=-1)
     #         # z_diff = np.abs(block0_z - block1_z)
-            
+
     #         # # Stacked = close in xy AND one is significantly above the other
     #         # stacked = (xy_dist < 0.05) & (z_diff > 0.03)
     #         # mask = mask & (~stacked)
@@ -218,7 +219,9 @@ def load_data_dict(cfg: DictConfig, training: bool = True) -> tuple[dict[str, np
     return train_dict, val_dict
 
 
-def get_libero_dataset(cfg: DictConfig, training: bool = True, debug: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+def get_libero_dataset(
+    cfg: DictConfig, training: bool = True, debug: bool = False
+) -> tuple[dict[str, Any], dict[str, Any]]:
     benchmark_name = cfg.name
     benchmark_dict = benchmark.get_benchmark_dict()
 
@@ -282,8 +285,7 @@ def get_libero_dataset(cfg: DictConfig, training: bool = True, debug: bool = Fal
 
         datasets_default_path = cfg.dir
         demo_files = [
-            os.path.join(datasets_default_path, benchmark_instance.get_task_demonstration(i))
-            for i in range(num_tasks)
+            os.path.join(datasets_default_path, benchmark_instance.get_task_demonstration(i)) for i in range(num_tasks)
         ]
 
     if debug:

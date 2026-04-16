@@ -13,7 +13,7 @@ log = lambda msg, color='bright_cyan': cprint(msg, color)
 
 
 def flush_traj_to_buffer(
-    traj_data: list[dict[str, list[Any]]], env_id: int, terminated: bool | np.ndarray, rb: "TrajectoryReplayBuffer"
+    traj_data: list[dict[str, list[Any]]], env_id: int, terminated: bool | np.ndarray, rb: 'TrajectoryReplayBuffer'
 ) -> None:
     """Add completed trajectory to the appropriate replay buffer."""
     traj_len = len(traj_data[env_id]['action'])
@@ -262,15 +262,17 @@ class TrajectoryReplayBuffer:
             discounts = (float(buffer.discount) ** np.arange(H))[None, :]
             R = (rewards * discounts).sum(axis=1, keepdims=True)
 
-            batches.append({
-                'obs': obs,
-                'actions': to_tensor(actions),
-                'timesteps': to_tensor(timesteps),
-                'context_noises': to_tensor(context_noises),
-                'rewards': to_tensor(R),
-                'next_obs': next_obs,
-                'terminals': to_tensor(terminals),
-            })
+            batches.append(
+                {
+                    'obs': obs,
+                    'actions': to_tensor(actions),
+                    'timesteps': to_tensor(timesteps),
+                    'context_noises': to_tensor(context_noises),
+                    'rewards': to_tensor(R),
+                    'next_obs': next_obs,
+                    'terminals': to_tensor(terminals),
+                }
+            )
 
         if len(batches) == 2:
             combined = {}

@@ -35,7 +35,6 @@ def create_optimizers(model: object, cfg: object) -> dict[str, torch.optim.Optim
 
 
 class SACAgent(nn.Module):
-
     def __init__(
         self,
         method: str,
@@ -64,7 +63,7 @@ class SACAgent(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
         # self.action_len = action_len
-        self.action_len = 1 # TODO: action noise
+        self.action_len = 1  # TODO: action noise
         self.context_dim = context_dim
 
         self.noise_bound = noise_bound
@@ -78,7 +77,7 @@ class SACAgent(nn.Module):
         self.use_autotune = use_autotune
         self.discount = discount
         self.tau = tau
-        
+
         self.critic_updates_per_actor_update = critic_updates_per_actor_update
 
         log(f'discount: {self.discount}')
@@ -173,17 +172,13 @@ class SACAgent(nn.Module):
 
             entropy_bonus = alpha_a * next_log_prob_a
             if self.method == 'tmrl':
-                entropy_bonus = (
-                    entropy_bonus
-                    + alpha_t * next_log_prob_t
-                    + alpha_c * next_log_prob_p
-                )
+                entropy_bonus = entropy_bonus + alpha_t * next_log_prob_t + alpha_c * next_log_prob_p
 
             next_q_target = next_q_targets.min(dim=0).values
             target_q = rewards + (1 - terminals) * (self.discount**self.action_len) * next_q_target
 
         # Only use the first action from the chunk for Q(s_t, a_t)
-        actions_q = actions[:, :self.action_len, :]
+        actions_q = actions[:, : self.action_len, :]
         qs = self.get_q(obs=obs, actions=actions_q, timesteps=timesteps, context_noises=context_noises)
         target_q_expanded = target_q.unsqueeze(0).expand_as(qs)  # [N, B, 1]
         critic_loss = F.mse_loss(qs, target_q_expanded)
@@ -206,9 +201,7 @@ class SACAgent(nn.Module):
         self,
         obs: Tensor,
         log_dict: dict[str, object] | None = None,
-    ) -> tuple[
-        Tensor, Tensor | float | None, Tensor | float | None, Tensor | float | None, dict[str, object]
-    ]:
+    ) -> tuple[Tensor, Tensor | float | None, Tensor | float | None, Tensor | float | None, dict[str, object]]:
         if log_dict is None:
             log_dict = {}
         actions, log_prob, _ = self.actor.get_action(obs)
@@ -327,7 +320,7 @@ class SACAgent(nn.Module):
 
         # Each update gets its own random subset of the batch
         all_indices = [
-            torch.randperm(B, device=actions.device)[:B // self.critic_updates_per_actor_update]
+            torch.randperm(B, device=actions.device)[: B // self.critic_updates_per_actor_update]
             for _ in range(self.critic_updates_per_actor_update)
         ]
 
@@ -355,7 +348,9 @@ class SACAgent(nn.Module):
         self.update_target_networks()
 
         # --- Actor update ---
-        actor_idx = torch.randperm(B, device=actions.device)[:B // self.critic_updates_per_actor_update]  # use a fresh randperm
+        actor_idx = torch.randperm(B, device=actions.device)[
+            : B // self.critic_updates_per_actor_update
+        ]  # use a fresh randperm
 
         actor_loss, alpha_a_loss, alpha_t_loss, alpha_c_loss, log_dict = self.compute_actor_and_alpha_loss(
             obs=_slice_batch(obs, actor_idx),
@@ -442,7 +437,7 @@ class Actor(nn.Module):
         self.obs_dim = obs_dim
         self.state_dim = state_dim
         self.action_dim = action_dim
-        
+
         input_dim = self.obs_dim + self.state_dim
 
         # Shared trunk
@@ -522,7 +517,7 @@ class Actor(nn.Module):
         # --- Action noise ---
         std_a = log_std_a.exp()
         normal_a = torch.distributions.Normal(mu_a, std_a)
-        x_a = normal_a.rsample() # reparameterization trick
+        x_a = normal_a.rsample()  # reparameterization trick
         y_a = torch.tanh(x_a)
         actions_a = y_a * self.action_scale + self.action_bias
 

@@ -68,7 +68,9 @@ class FlowPolicy(nn.Module):
         for tcont_action, tcont_next_action in zip(self.timesteps[:-1], self.timesteps[1:]):
             t_action = (tcont_action * self.num_train_steps).long()
             flow_pred = self.noise_pred_net(
-                action=action_sample, t_action=t_action, global_cond=global_cond,
+                action=action_sample,
+                t_action=t_action,
+                global_cond=global_cond,
             )
             action_sample = action_sample + (tcont_next_action - tcont_action) * flow_pred
 
@@ -88,7 +90,9 @@ class FlowPolicy(nn.Module):
         global_cond = torch.cat([obs, goals], dim=-1) if self.goal_dim > 0 else obs
 
         noise_pred_action = self.noise_pred_net(
-            action=noisy_action, t_action=t_action, global_cond=global_cond,
+            action=noisy_action,
+            t_action=t_action,
+            global_cond=global_cond,
         )
 
         loss = F.mse_loss(noise_pred_action, direction_action)
@@ -139,7 +143,7 @@ class ContextSmoothedFlowPolicy(FlowPolicy):
         self.noise_goal = context_dim == goal_dim
         self.noise_state = context_dim == obs_dim
 
-        assert self.noise_goal or self.noise_state, "ContextSmoothedFlowPolicy must noise either the goal or the state"
+        assert self.noise_goal or self.noise_state, 'ContextSmoothedFlowPolicy must noise either the goal or the state'
 
         # Override with dual-timestep net for context noising
         self.noise_pred_net = NoisePredNet(
@@ -187,7 +191,9 @@ class ContextSmoothedFlowPolicy(FlowPolicy):
             tcont_context = torch.ones((batch_size,), device=device) * 0.999
         else:
             if tcont_context.ndim == 1:
-                tcont_context = tcont_context.expand(batch_size,)
+                tcont_context = tcont_context.expand(
+                    batch_size,
+                )
             tcont_context = tcont_context.to(dtype=torch.float, device=device)
         t_context = (tcont_context * self.num_train_steps).long().clamp(max=self.num_train_steps - 1)
 

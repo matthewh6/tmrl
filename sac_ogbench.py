@@ -11,9 +11,7 @@ from tmrl.utils.buffer import TrajectoryReplayBuffer, flush_traj_to_buffer
 from tmrl.utils.logging import cprint
 from tmrl.utils.eval import evaluate_policy_ogbench
 from tmrl.utils.env import setup_envs
-from tmrl.utils.common import (
-    set_seed, load_checkpoint, merge_batches, to_device, create_optimizers, to_tensor
-)
+from tmrl.utils.common import set_seed, load_checkpoint, merge_batches, to_device, create_optimizers, to_tensor
 
 
 def log(msg: str, color: str = 'bright_green') -> None:
@@ -25,13 +23,15 @@ def sample_random_actions(
 ) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
     """Sample random actions for replay buffer warm-up."""
 
-    action_noise = np.random.uniform(
-        low=-cfg.noise_bound, high=cfg.noise_bound, size=(cfg.n_envs, action_dim)
-    ).astype(np.float32)
+    action_noise = np.random.uniform(low=-cfg.noise_bound, high=cfg.noise_bound, size=(cfg.n_envs, action_dim)).astype(
+        np.float32
+    )
     timesteps = context_noise = None
     if cfg.method == 'tmrl':
         timesteps = torch.empty((cfg.n_envs, 1), dtype=torch.float32).uniform_(-1.0, 1.0)
-        context_noise = torch.empty((cfg.n_envs, context_dim), dtype=torch.float32).uniform_(-cfg.context_noise_bound, cfg.context_noise_bound)
+        context_noise = torch.empty((cfg.n_envs, context_dim), dtype=torch.float32).uniform_(
+            -cfg.context_noise_bound, cfg.context_noise_bound
+        )
 
     action_noise = to_tensor(action_noise)
 
@@ -51,7 +51,7 @@ def infer_actions(
     goal = to_tensor(info['goal']) if 'goal' in info else None
     if goal is not None:
         # obs is [raw_obs, goal] concatenated; extract raw obs for flow model
-        obs = obs[:, :cfg.dataset.obs_dim]
+        obs = obs[:, : cfg.dataset.obs_dim]
 
     method = cfg.method
 
@@ -65,11 +65,7 @@ def infer_actions(
             tcont_context = None
 
         return model.dp.sample(
-            obs=obs,
-            goals=goal,
-            tcont_context=tcont_context,
-            action_noise=action_noise,
-            context_noise=context_noise
+            obs=obs, goals=goal, tcont_context=tcont_context, action_noise=action_noise, context_noise=context_noise
         )
 
     else:
@@ -144,7 +140,9 @@ def main(cfg: object) -> None:
 
     sep = '=' * 70
     log(f'{sep}\nTraining/Environment dimensions:\n{sep}')
-    log(f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | actor_action_dim: {actor_action_dim} | goal_dim: {goal_dim}')
+    log(
+        f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | actor_action_dim: {actor_action_dim} | goal_dim: {goal_dim}'
+    )
     log(sep)
 
     # Offline dataset
@@ -260,7 +258,7 @@ def main(cfg: object) -> None:
             full_truncated[alive_mask] |= sub_trunc[alive_mask]
 
             newly_done = np.where((sub_term | sub_trunc) & alive_mask)[0]
-            done_mask |= (sub_term | sub_trunc)
+            done_mask |= sub_term | sub_trunc
 
             # Reset terminated envs so SyncVectorEnv allows stepping them next iteration
             for idx in newly_done:
@@ -355,17 +353,21 @@ def main(cfg: object) -> None:
         # Metrics
         if cml_rollouts >= 10:
             log_data['online/cml_success_rate'] = cml_success / cml_rollouts
-        log_data.update({
-            'online/cml_success': int(cml_success),
-            'online/cml_rollouts': cml_rollouts,
-            'online/sps': time.time() - step_time,
-        })
+        log_data.update(
+            {
+                'online/cml_success': int(cml_success),
+                'online/cml_rollouts': cml_rollouts,
+                'online/sps': time.time() - step_time,
+            }
+        )
         if action_noise is not None:
-            log_data.update({
-                'online/action_noise_min': action_noise.min().item(),
-                'online/action_noise_mean': action_noise.mean().item(),
-                'online/action_noise_max': action_noise.max().item(),
-            })
+            log_data.update(
+                {
+                    'online/action_noise_min': action_noise.min().item(),
+                    'online/action_noise_mean': action_noise.mean().item(),
+                    'online/action_noise_max': action_noise.max().item(),
+                }
+            )
         if cfg.method == 'tmrl' and timesteps is not None:
             log_data['online/timesteps'] = timesteps.mean().item()
 

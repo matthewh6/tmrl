@@ -12,7 +12,11 @@ from tmrl.utils.logging import cprint
 from tmrl.utils.eval import evaluate_policy_libero
 from tmrl.utils.env import setup_libero_envs
 from tmrl.utils.common import (
-    set_seed, to_device, load_pi0_model, to_tensor, create_optimizers,
+    set_seed,
+    to_device,
+    load_pi0_model,
+    to_tensor,
+    create_optimizers,
 )
 from tmrl.models.common.vision import Dinov2withNorm
 
@@ -32,7 +36,7 @@ def infer_actions(
     """Run diffusion policy inference to get chunked actions."""
 
     if cfg.debug:
-        return np.repeat(action_noise[:, None, :cfg.dataset.action_dim], cfg.action_exec_len, axis=1)
+        return np.repeat(action_noise[:, None, : cfg.dataset.action_dim], cfg.action_exec_len, axis=1)
 
     uses_chunking = cfg.method in ['tmrl', 'dsrl']
     if not uses_chunking:
@@ -41,7 +45,9 @@ def infer_actions(
     if cfg.method == 'tmrl':
         tcont_context = (timesteps * cfg.timestep_max / 2) + (cfg.timestep_max / 2)
 
-        return model.dp.infer(obs=obs, action_noise=action_noise, tcont_context=tcont_context, context_noise=context_noise)['actions']
+        return model.dp.infer(
+            obs=obs, action_noise=action_noise, tcont_context=tcont_context, context_noise=context_noise
+        )['actions']
     elif cfg.method == 'dsrl':
         return model.dp.infer(obs=obs, action_noise=action_noise)['actions']
     else:
@@ -52,14 +58,15 @@ def sample_random_actions(
     cfg: object, n_envs: int, action_dim: int, context_dim: int
 ) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None]:
     """Sample random actions for replay buffer warm-up."""
-    action_noise = np.random.uniform(
-        low=-cfg.noise_bound, high=cfg.noise_bound, size=(n_envs, action_dim)
-    ).astype(np.float32)
+    action_noise = np.random.uniform(low=-cfg.noise_bound, high=cfg.noise_bound, size=(n_envs, action_dim)).astype(
+        np.float32
+    )
     timesteps = context_noise = None
     if cfg.method == 'tmrl':
         timesteps = np.random.uniform(low=-1.0, high=1.0, size=(n_envs, 1)).astype(np.float32)
         context_noise = np.random.uniform(
-            low=-cfg.context_noise_bound, high=cfg.context_noise_bound,
+            low=-cfg.context_noise_bound,
+            high=cfg.context_noise_bound,
             size=(n_envs, context_dim),
         ).astype(np.float32)
     return action_noise, timesteps, context_noise
@@ -104,7 +111,11 @@ def main(cfg: object) -> None:
 
     # Environment
     env = setup_libero_envs(
-        cfg, n_envs=cfg.n_envs, dataset_name=cfg.dataset.name, height=256, width=256,
+        cfg,
+        n_envs=cfg.n_envs,
+        dataset_name=cfg.dataset.name,
+        height=256,
+        width=256,
     )
     n_envs = cfg.n_envs
     obs_dim = cfg.model.obs_dim
@@ -117,8 +128,12 @@ def main(cfg: object) -> None:
 
     sep = '=' * 70
     log(f'{sep}\nTraining/Environment dimensions:\n{sep}')
-    log(f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | action_exec_len: {action_exec_len}')
-    log(f'noise_bound: {cfg.noise_bound} | timestep_max: {cfg.timestep_max} | context_noise_bound: {cfg.context_noise_bound}')
+    log(
+        f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | action_exec_len: {action_exec_len}'
+    )
+    log(
+        f'noise_bound: {cfg.noise_bound} | timestep_max: {cfg.timestep_max} | context_noise_bound: {cfg.context_noise_bound}'
+    )
     log(sep)
 
     # Replay buffers
@@ -138,7 +153,16 @@ def main(cfg: object) -> None:
     # Initial env reset + stabilization
     env.reset()
     for _ in range(50):
-        env.step(np.random.uniform(-1, 1, (n_envs, 7,)))
+        env.step(
+            np.random.uniform(
+                -1,
+                1,
+                (
+                    n_envs,
+                    7,
+                ),
+            )
+        )
     env.reset()
     dummy = np.zeros((n_envs, cfg.dataset.action_dim))
     for _ in range(cfg.num_steps_wait):
@@ -169,7 +193,9 @@ def main(cfg: object) -> None:
         # Periodic eval
         if step % cfg.eval_interval == 0 and not (cfg.skip_first and step == 0):
             model.eval()
-            evaluate_policy_libero(cfg=cfg, model=model, log_data=log_data, step=step, image_encoder=image_encoder, env=eval_env)
+            evaluate_policy_libero(
+                cfg=cfg, model=model, log_data=log_data, step=step, image_encoder=image_encoder, env=eval_env
+            )
             model.train()
 
         # Encode image obs
@@ -259,9 +285,7 @@ def main(cfg: object) -> None:
             # Warmup only the reset envs so non-done envs are not disturbed
             warmup_obs = None
             for _ in range(cfg.num_steps_wait):
-                warmup_obs, _, _, _, _ = env.step(
-                    np.zeros((len(done_ids), cfg.dataset.action_dim)), id=done_ids
-                )
+                warmup_obs, _, _, _, _ = env.step(np.zeros((len(done_ids), cfg.dataset.action_dim)), id=done_ids)
             # Non-done envs keep next_obs; done envs get post-reset obs
             obs = next_obs
             if warmup_obs is not None:
@@ -278,7 +302,9 @@ def main(cfg: object) -> None:
         if step > cfg.learning_starts:
             if step == cfg.learning_starts + 1:
                 log(f'Learning starts at step {step}')
-            online_batch = to_device(rb.sample(batch_size=cfg.dataset.batch_size*cfg.model.critic_updates_per_actor_update), device)
+            online_batch = to_device(
+                rb.sample(batch_size=cfg.dataset.batch_size * cfg.model.critic_updates_per_actor_update), device
+            )
             log_data.update(model.update(**online_batch, optimizers=optimizers))
 
         # Frame logging for video
@@ -291,34 +317,38 @@ def main(cfg: object) -> None:
             for env_id in dones:
                 successful = terminated[env_id]
                 log_key = f'online/env_success_{env_id}' if successful else f'online/env_{env_id}'
-                
+
                 if render_videos and step % cfg.eval_interval == 0:
                     log_data[log_key] = wandb.Video(
                         np.array(frames[env_id]).transpose(0, 3, 1, 2), fps=15, format='mp4'
                     )
 
                 frames[env_id] = []
-        
+
         # Metrics
         if cml_rollouts >= 20:
             log_data['online/cml_success_rate'] = cml_success / cml_rollouts
-        log_data.update({
-            'online/cml_success': int(cml_success),
-            'online/cml_rollouts': cml_rollouts,
-            'online/sps': time.time() - step_time,
-            'online/action_noise_min': action_noise.min(),
-            'online/action_noise_mean': action_noise.mean(),
-            'online/action_noise_max': action_noise.max(),
-        })
+        log_data.update(
+            {
+                'online/cml_success': int(cml_success),
+                'online/cml_rollouts': cml_rollouts,
+                'online/sps': time.time() - step_time,
+                'online/action_noise_min': action_noise.min(),
+                'online/action_noise_mean': action_noise.mean(),
+                'online/action_noise_max': action_noise.max(),
+            }
+        )
         if cfg.method == 'tmrl':
-            log_data.update({
-                'online/timesteps_min': timesteps.min(),
-                'online/timesteps_mean': timesteps.mean(),
-                'online/timesteps_max': timesteps.max(),
-                'online/context_noises_min': context_noise.min(),
-                'online/context_noises_mean': context_noise.mean(),
-                'online/context_noises_max': context_noise.max(),
-            })
+            log_data.update(
+                {
+                    'online/timesteps_min': timesteps.min(),
+                    'online/timesteps_mean': timesteps.mean(),
+                    'online/timesteps_max': timesteps.max(),
+                    'online/context_noises_min': context_noise.min(),
+                    'online/context_noises_mean': context_noise.mean(),
+                    'online/context_noises_max': context_noise.max(),
+                }
+            )
 
         if cfg.use_wandb and log_data:
             log_data['global_step'] = step

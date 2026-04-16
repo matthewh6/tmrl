@@ -53,8 +53,7 @@ class PosteriorVarianceEstimator:
         self.ensemble_size = ensemble_size
         self.device = device
         self.members = [
-            EnsembleMember(obs_dim, action_dim, hidden_size, num_layers).to(device)
-            for _ in range(ensemble_size)
+            EnsembleMember(obs_dim, action_dim, hidden_size, num_layers).to(device) for _ in range(ensemble_size)
         ]
 
     def fit(
@@ -82,16 +81,20 @@ class PosteriorVarianceEstimator:
             optimizer = torch.optim.Adam(member.parameters(), lr=lr)
             dataset = TensorDataset(b_obs, b_actions)
             use_workers = N > 10_000
-            loader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
-                                num_workers=2 if use_workers else 0,
-                                pin_memory=(self.device != 'cpu'),
-                                persistent_workers=use_workers)
+            loader = DataLoader(
+                dataset,
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=2 if use_workers else 0,
+                pin_memory=(self.device != 'cpu'),
+                persistent_workers=use_workers,
+            )
 
             best_loss = float('inf')
             epochs_no_improve = 0
 
             member.train()
-            pbar = tqdm.trange(num_epochs, desc=f"Ensemble {k+1}/{self.ensemble_size}")
+            pbar = tqdm.trange(num_epochs, desc=f'Ensemble {k + 1}/{self.ensemble_size}')
             for epoch in pbar:
                 epoch_loss = 0.0
                 num_batches = 0
@@ -110,10 +113,12 @@ class PosteriorVarianceEstimator:
                 pbar.set_postfix(loss=f'{avg_loss:.6f}')
 
                 if wandb.run is not None and epoch % 10 == 0:
-                    wandb.log({
-                        f'postbc/ensemble_{k}/loss': avg_loss,
-                        'postbc/ensemble_epoch': epoch + k * num_epochs,
-                    })
+                    wandb.log(
+                        {
+                            f'postbc/ensemble_{k}/loss': avg_loss,
+                            'postbc/ensemble_epoch': epoch + k * num_epochs,
+                        }
+                    )
 
                 # Early stopping
                 if avg_loss < best_loss - 1e-6:
@@ -122,7 +127,7 @@ class PosteriorVarianceEstimator:
                 else:
                     epochs_no_improve += 1
                     if epochs_no_improve >= patience:
-                        log(f'Ensemble {k+1}: early stop at epoch {epoch} (best_loss={best_loss:.6f})')
+                        log(f'Ensemble {k + 1}: early stop at epoch {epoch} (best_loss={best_loss:.6f})')
                         break
 
             log(f'Ensemble member {k + 1}/{self.ensemble_size} trained (loss={avg_loss:.6f})')

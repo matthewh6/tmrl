@@ -97,9 +97,7 @@ def load_checkpoint(ckpt_dir: str | os.PathLike[str] | Path, device: str | torch
     return model
 
 
-def merge_batches(
-    offline_batch: dict[str, object] | None, online_batch: dict[str, object] | None
-) -> dict[str, object]:
+def merge_batches(offline_batch: dict[str, object] | None, online_batch: dict[str, object] | None) -> dict[str, object]:
     if offline_batch is None:
         return online_batch
     if online_batch is None:
@@ -219,6 +217,8 @@ def infer_actions(
 
     if cfg.method == 'tmrl':
         tcont_context = (timesteps * cfg.timestep_max / 2) + (cfg.timestep_max / 2)
-        return model.dp.infer(obs=raw_obs, action_noise=action_noise, tcont_context=tcont_context, context_noise=context_noise)['actions']
+        return model.dp.infer(
+            obs=raw_obs, action_noise=action_noise, tcont_context=tcont_context, context_noise=context_noise
+        )['actions']
     else:  # dsrl
         return model.dp.infer(obs=raw_obs, action_noise=action_noise)['actions']

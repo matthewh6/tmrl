@@ -147,7 +147,9 @@ def process_pi0_obs_simpler(
 
 
 @torch.no_grad()
-def embed_images(obs: dict[str, np.ndarray | torch.Tensor], obs_encoder: object) -> dict[str, np.ndarray | torch.Tensor]:
+def embed_images(
+    obs: dict[str, np.ndarray | torch.Tensor], obs_encoder: object
+) -> dict[str, np.ndarray | torch.Tensor]:
     # image = obs['observation/image']
     image = obs['observation/exterior_image_1_left']
     if image.ndim == 3:

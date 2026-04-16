@@ -141,7 +141,10 @@ def main(cfg: object) -> None:
                 obs = batch['obs']
 
             batch['actions'] = relabel_actions_postbc(
-                batch['actions'], obs, postbc_estimator, alpha=cfg.postbc_alpha,
+                batch['actions'],
+                obs,
+                postbc_estimator,
+                alpha=cfg.postbc_alpha,
             )
 
         info = train_one_step(model, optimizer, scheduler, batch)
