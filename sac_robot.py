@@ -13,19 +13,19 @@ from tmrl.utils.logging import cprint
 from tmrl.utils.eval import evaluate_policy_robot
 from tmrl.utils.remote_env import make_remote_env
 from tmrl.utils.common import (
-    set_seed, to_device, load_pi0_model, to_tensor, create_optimizers,
-    check_memory_kill_switch, infer_actions,
+    set_seed, to_device, load_pi0_model, to_tensor, create_optimizers, infer_actions,
 )
 from tmrl.utils.obs import embed_images
 from tmrl.models.common.vision import Dinov2withNorm
 
 
-def log(msg, color='bright_green'):
+def log(msg: str, color: str = 'bright_green') -> None:
     cprint(msg, color)
 
 
-
-def sample_random_actions(cfg, n_envs, action_dim, context_dim):
+def sample_random_actions(
+    cfg: object, n_envs: int, action_dim: int, context_dim: int
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray | None]:
     """Sample random actions for replay buffer warm-up."""
     action_noise = np.random.uniform(
         low=-cfg.noise_bound, high=cfg.noise_bound, size=(n_envs, action_dim)
@@ -40,7 +40,13 @@ def sample_random_actions(cfg, n_envs, action_dim, context_dim):
     return action_noise, timesteps, context_noise
 
 
-def _save_training_checkpoint(cfg, step, model, optimizers, counters):
+def _save_training_checkpoint(
+    cfg: object,
+    step: int,
+    model: torch.nn.Module,
+    optimizers: dict[str, torch.optim.Optimizer],
+    counters: dict[str, object],
+) -> None:
     """Save model, optimizers, buffers, and counters to disk."""
     run_stamp = getattr(_save_training_checkpoint, '_run_stamp', None)
     if run_stamp is None:
@@ -66,7 +72,9 @@ def _save_training_checkpoint(cfg, step, model, optimizers, counters):
     log(f'Saved checkpoint at step {step} to {step_path} and {latest_path}')
 
 
-def _maybe_load_checkpoint(cfg, model, optimizers, device):
+def _maybe_load_checkpoint(
+    cfg: object, model: torch.nn.Module, optimizers: dict[str, torch.optim.Optimizer], device: torch.device
+) -> tuple[int, dict[str, object]]:
     """Load checkpoint if resume_path is provided."""
     ckpt_cfg = getattr(cfg, 'checkpoint', None)
     resume_path = getattr(ckpt_cfg, 'resume_path', None)
@@ -105,7 +113,7 @@ def _maybe_load_checkpoint(cfg, model, optimizers, device):
 
 
 @hydra.main(version_base=None, config_path='tmrl/cfg', config_name='sac_robot.yaml')
-def main(cfg):
+def main(cfg: object) -> None:
     if cfg.debug:
         cfg.learning_starts = 101
         cfg.action_exec_len = 1
@@ -144,12 +152,13 @@ def main(cfg):
 
     # Environment
     remote_cfg = OmegaConf.select(cfg, 'remote_robot', default=None) or {}
-    remote_host = remote_cfg.get('host', 'localhost')
-    remote_port = remote_cfg.get('port', 6000)
+    remote_host = remote_cfg.get('host') or 'localhost'
+    remote_port = remote_cfg.get('port') or 6000
     log(f'Connecting to remote robot at {remote_host}:{remote_port}')
     env = make_remote_env(
         server_url=f'tcp://{remote_host}:{remote_port}',
         obs_format=cfg.dataset.name,
+        connect_timeout=remote_cfg.get('connect_timeout', 300.0),
     )
 
     obs, _ = env.reset()
@@ -173,7 +182,7 @@ def main(cfg):
 
     # Replay buffer
     rb_kwargs = dict(
-        method=cfg.method, dataset_name=cfg.dataset.name, capacity=500_000,
+        method=cfg.method, dataset_name=cfg.dataset.name, capacity=cfg.capacity,
         n_envs=n_envs, obs_dim=obs_dim+state_dim, action_dim=action_dim,
         action_len=action_len, discount=cfg.dataset.discount,
         use_success_buffer=cfg.use_success_buffer,
@@ -184,7 +193,6 @@ def main(cfg):
     # Per-env state
     frames = []
     wrist_frames = []
-    clean_frames = []
     step_count = 0
 
     traj_data = [
@@ -205,7 +213,6 @@ def main(cfg):
 
     for step in tqdm(range(start_step, cfg.train_steps + 1), total=cfg.train_steps, initial=start_step, dynamic_ncols=True):
         log_data = {}
-        check_memory_kill_switch()
 
         # Checkpointing
         if ckpt_cfg is not None and step > 0 and (step - start_step) % ckpt_cfg.save_interval == 0:
@@ -241,7 +248,6 @@ def main(cfg):
             actions = infer_actions(cfg, model, raw_obs, action_noise, timesteps, context_noise)
             actions = actions[:action_exec_len]
             actions = np.asarray(actions, dtype=np.float32)
-            # actions = np.clip(actions, -1, 1)
 
         # Capture frame from pre-step obs
         frame = raw_obs.get('observation/exterior_image_1_left', raw_obs.get('observation/image'))
@@ -276,7 +282,6 @@ def main(cfg):
         # Frame logging for video
         if render_videos:
             frames.append(frame)
-            clean_frames.append(frame)
             if wrist_frame is not None:
                 wrist_frames.append(wrist_frame)
 
@@ -287,12 +292,10 @@ def main(cfg):
             if render_videos and frames:
                 log_key = 'online/ep_success' if is_success else 'online/ep'
                 log_data[log_key] = wandb.Video(np.array(frames).transpose(0, 3, 1, 2), fps=15, format='mp4')
-                log_data[log_key + '_clean'] = wandb.Video(np.array(clean_frames).transpose(0, 3, 1, 2), fps=15, format='mp4')
                 if wrist_frames:
                     log_data[log_key + '_wrist'] = wandb.Video(np.array(wrist_frames).transpose(0, 3, 1, 2), fps=15, format='mp4')
 
             frames.clear()
-            clean_frames.clear()
             wrist_frames.clear()
 
             obs, _ = env.reset()
@@ -310,7 +313,7 @@ def main(cfg):
         log_data.update({
             'online/cml_success': int(cml_success),
             'online/cml_rollouts': cml_rollouts,
-            'online/cml_success_rate': cml_success / cml_rollouts
+            'online/cml_success_rate': (cml_success / cml_rollouts) if cml_rollouts > 0 else 0.0,
             'online/action_noise_min': action_noise.min(),
             'online/action_noise_mean': action_noise.mean(),
             'online/action_noise_max': action_noise.max(),

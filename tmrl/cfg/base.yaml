@@ -1,15 +1,19 @@
 # @package _global_
-
-debug: False
+debug: false
 seed: 42
-ckpt_file: null
+
+paths:
+  project_dir: ${hydra:runtime.cwd}
+  data_dir: ${paths.project_dir}/datasets
+  results_dir: ${paths.project_dir}/results
+  wandb_dir: ${paths.project_dir}/wandb
+  ckpt_dir: ${paths.project_dir}/checkpoints
 
 use_wandb: false
-tags: null
 wandb:
   entity: hongmm
   name: "${hydra:runtime.choices.model}_${hydra:runtime.choices.dataset}_${now:%m%d_%H%M}"
-  tags: ${tags}
+  tags: null
   dir: ${paths.wandb_dir}
 
 optimizer:
@@ -20,8 +24,3 @@ optimizer:
 
 scheduler:
   name: "constant"
-
-hidden_dim: 128
-  
-defaults:
-  - local: default

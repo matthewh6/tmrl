@@ -1,10 +1,11 @@
 import numpy as np
-from tmrl.utils.common import to_tensor
-from PIL import Image
 import torch
+from PIL import Image
+
+from tmrl.utils.common import to_tensor
 
 
-def process_libero_obs(obs):
+def process_libero_obs(obs: list[dict[str, np.ndarray]]) -> dict[str, np.ndarray]:
     """
     Prepare observations for the model.
 
@@ -38,7 +39,9 @@ def process_libero_obs(obs):
     return {'obs': obs_arr, 'states': states_arr}
 
 
-def process_ogbench_obs(ob_dict, model, dataset_name, env):
+def process_ogbench_obs(
+    ob_dict: dict[str, np.ndarray], model: object, dataset_name: str, env: object
+) -> tuple[torch.Tensor | None, None, torch.Tensor | None, None]:
     """
     Prepares observations as model inputs for ogbench.
 
@@ -54,7 +57,9 @@ def process_ogbench_obs(ob_dict, model, dataset_name, env):
 
 
 # TODO UNUSED NOW
-def process_pi0_obs(obs, n_envs, obs_encoder=None):
+def process_pi0_obs(
+    obs: dict[str, np.ndarray | str], n_envs: int, obs_encoder: object | None = None
+) -> dict[str, np.ndarray]:
     """Ensure observation has all required keys for Pi0's get_prefix_rep."""
     obs = dict(obs)  # Make a copy to avoid modifying original
 
@@ -86,7 +91,9 @@ def process_pi0_obs(obs, n_envs, obs_encoder=None):
     return obs_dict
 
 
-def process_pi0_obs_simpler(obs, n_envs, instruction, obs_encoder=None):
+def process_pi0_obs_simpler(
+    obs: dict[str, object], n_envs: int, instruction: str, obs_encoder: object | None = None
+) -> dict[str, np.ndarray]:
     """Ensure observation has all required keys for Pi0's get_prefix_rep in SimplerEnv."""
     from simpler_env.policies.pi0.geometry import quat2mat, mat2euler
 
@@ -107,7 +114,7 @@ def process_pi0_obs_simpler(obs, n_envs, instruction, obs_encoder=None):
         state = obs['observation/state']
     else:
 
-        def preprocess_widowx_proprio(eef_pos) -> np.array:
+        def preprocess_widowx_proprio(eef_pos: np.ndarray) -> np.ndarray:
             """Convert ee rotation to the frame of top-down."""
             default_rot = np.array([[0, 0, 1.0], [0, 1.0, 0], [-1.0, 0, 0]])
             proprio = eef_pos
@@ -140,7 +147,7 @@ def process_pi0_obs_simpler(obs, n_envs, instruction, obs_encoder=None):
 
 
 @torch.no_grad()
-def embed_images(obs, obs_encoder):
+def embed_images(obs: dict[str, np.ndarray | torch.Tensor], obs_encoder: object) -> dict[str, np.ndarray | torch.Tensor]:
     # image = obs['observation/image']
     image = obs['observation/exterior_image_1_left']
     if image.ndim == 3:

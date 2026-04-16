@@ -12,4 +12,4 @@ max_ep_steps: 200
 discount: 0.995
 
 defaults:
-- base_ogbench
+  - base_ogbench

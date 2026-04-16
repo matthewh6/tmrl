@@ -5,7 +5,7 @@ obs_dim: ??
 state_dim: ??
 action_dim: ??
 action_len: ??
-context_dim: ?? # for TMRL, the dimension of the context being noised
+context_dim: ??
 
 max_ep_steps: ??
 discount: ??

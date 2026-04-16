@@ -1,8 +1,0 @@
-# @package _global_
-
-paths:
-  project_dir: /home/hongmm/p-diff-exp
-  data_dir: /home/hongmm/p-diff-exp/datasets
-  results_dir: /home/hongmm/p-diff-exp/results
-  wandb_dir: /home/hongmm/p-diff-exp/wandb
-  ckpt_dir: /home/hongmm/.cache/openpi/openpi-assets/checkpoints

@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
-from torch import Tensor
 import torch.nn.functional as F
+from torch import Tensor
+
 from tmrl.models.common.noise import NoisePredNet
 
 
@@ -19,8 +20,8 @@ class FlowPolicy(nn.Module):
         num_layers: int = 4,
         num_heads: int = 4,
         mlp_ratio: float = 4.0,
-        **kwargs,
-    ):
+        **kwargs: object,
+    ) -> None:
         super().__init__()
         self.obs_dim = obs_dim
         self.action_len = action_len
@@ -46,11 +47,13 @@ class FlowPolicy(nn.Module):
             mlp_ratio=mlp_ratio,
         )
 
-    def sample_timesteps(self, batch_size, device):
+    def sample_timesteps(self, batch_size: int, device: torch.device | str) -> Tensor:
         return torch.rand((batch_size,), device=device)
 
     @torch.no_grad()
-    def sample(self, obs: Tensor, goals: Tensor = None, action_noise: Tensor = None, **kwargs) -> Tensor:
+    def sample(
+        self, obs: Tensor, goals: Tensor | None = None, action_noise: Tensor | None = None, **kwargs: object
+    ) -> Tensor:
         batch_size, device = obs.shape[0], obs.device
 
         if action_noise is None:
@@ -71,7 +74,9 @@ class FlowPolicy(nn.Module):
 
         return action_sample
 
-    def forward(self, obs: Tensor, actions: Tensor, goals: Tensor = None, **kwargs):
+    def forward(
+        self, obs: Tensor, actions: Tensor, goals: Tensor | None = None, **kwargs: object
+    ) -> tuple[Tensor, dict[str, float]]:
         batch_size, device = obs.shape[0], obs.device
 
         action_noise = torch.randn_like(actions)
@@ -112,8 +117,8 @@ class ContextSmoothedFlowPolicy(FlowPolicy):
         num_layers: int = 4,
         num_heads: int = 4,
         mlp_ratio: float = 4.0,
-        **kwargs,
-    ):
+        **kwargs: object,
+    ) -> None:
         super().__init__(
             obs_dim=obs_dim,
             action_len=action_len,
@@ -162,11 +167,11 @@ class ContextSmoothedFlowPolicy(FlowPolicy):
     def sample(
         self,
         obs: Tensor,
-        goals: Tensor = None,
-        tcont_context: Tensor = None,
-        action_noise: Tensor = None,
-        context_noise: Tensor = None,
-        **kwargs,
+        goals: Tensor | None = None,
+        tcont_context: Tensor | None = None,
+        action_noise: Tensor | None = None,
+        context_noise: Tensor | None = None,
+        **kwargs: object,
     ) -> Tensor:
         batch_size, device = obs.shape[0], obs.device
 
@@ -212,9 +217,9 @@ class ContextSmoothedFlowPolicy(FlowPolicy):
         self,
         obs: Tensor,
         actions: Tensor,
-        goals: Tensor = None,
-        **kwargs,
-    ) -> Tensor:
+        goals: Tensor | None = None,
+        **kwargs: object,
+    ) -> tuple[Tensor, dict[str, float]]:
         batch_size, device = obs.shape[0], obs.device
 
         context_noise = torch.randn((batch_size, self.context_dim), device=device)

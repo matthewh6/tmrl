@@ -7,7 +7,7 @@ from tmrl.models.common.utils import SinusoidalPosEmb, init_weights
 
 
 class DualTimestepEncoder(nn.Module):
-    def __init__(self, embed_dim: int = 128, mlp_ratio: float = 4.0):
+    def __init__(self, embed_dim: int = 128, mlp_ratio: float = 4.0) -> None:
         super().__init__()
         self.sinusoidal_pos_emb = SinusoidalPosEmb(embed_dim)
         hidden_dim = int(embed_dim * mlp_ratio)
@@ -17,7 +17,7 @@ class DualTimestepEncoder(nn.Module):
             nn.Linear(hidden_dim, embed_dim),
         )
 
-    def forward(self, t1, t2):
+    def forward(self, t1: Tensor, t2: Tensor) -> Tensor:
         temb1 = self.sinusoidal_pos_emb(t1)
         temb2 = self.sinusoidal_pos_emb(t2)
         temb = torch.cat([temb1, temb2], dim=-1)
@@ -37,7 +37,7 @@ class NoisePredNet(nn.Module):
         num_heads: int = 4,
         num_layers: int = 4,
         mlp_ratio: float = 4.0,
-    ):
+    ) -> None:
         super().__init__()
 
         # Action
@@ -125,7 +125,7 @@ class NoisePredNet(nn.Module):
 
         return action_noise_pred
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         self.apply(init_weights)
 
         w = self.global_cond_embedding[0].weight.data

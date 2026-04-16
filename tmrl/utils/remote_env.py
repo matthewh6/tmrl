@@ -7,23 +7,23 @@ import socket
 import pickle
 import struct
 import time
-import numpy as np
-import gymnasium as gym
-from typing import Dict, Any, Tuple, Optional
 from urllib.parse import urlparse
+
+import gymnasium as gym
+import numpy as np
 
 STEP_REWARD = -1
 SUCCESS_REWARD = 0
 
 
-def send_msg(sock, msg):
+def send_msg(sock: socket.socket, msg: object) -> None:
     """Send a message with length prefix over socket."""
     msg_bytes = pickle.dumps(msg)
     msg_len = struct.pack('>I', len(msg_bytes))
     sock.sendall(msg_len + msg_bytes)
 
 
-def recv_msg(sock):
+def recv_msg(sock: socket.socket) -> object | None:
     """Receive a length-prefixed message from socket."""
     raw_msglen = recvall(sock, 4)
     if not raw_msglen:
@@ -32,7 +32,7 @@ def recv_msg(sock):
     return pickle.loads(recvall(sock, msglen))
 
 
-def recvall(sock, n):
+def recvall(sock: socket.socket, n: int) -> bytes | None:
     """Helper to receive n bytes or return None if EOF is hit."""
     data = bytearray()
     while len(data) < n:
@@ -68,7 +68,7 @@ class RemoteEnv(gym.Env):
         socket_timeout: float = 30.0,
         connect_timeout: float = float('inf'),
         retry_interval: float = 5.0,
-    ):
+    ) -> None:
         """
         Args:
             server_url: URL of remote server (e.g., "tcp://localhost:6000")
@@ -218,7 +218,7 @@ class RemoteEnv(gym.Env):
 
         self.action_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.action_dim,), dtype=np.float32)
 
-    def _connect(self):
+    def _connect(self) -> None:
         """Connect to remote server with retries until connect_timeout."""
         import time
 
@@ -253,8 +253,8 @@ class RemoteEnv(gym.Env):
                 time.sleep(self.retry_interval)
 
     def reset(
-        self, seed: Optional[int] = None, options: Optional[Dict[str, Any]] = None
-    ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        self, seed: int | None = None, options: dict[str, object] | None = None
+    ) -> tuple[dict[str, object], dict[str, object]]:
         """Reset environment and return initial observation.
 
         This method will keep trying to reconnect until successful.
@@ -316,12 +316,12 @@ class RemoteEnv(gym.Env):
                 print('[RemoteEnv] (Restart the robot server when ready)')
                 time.sleep(self.retry_interval)
 
-    def _ensure_connected(self):
+    def _ensure_connected(self) -> None:
         """Ensure we have an active connection, reconnect if needed."""
         if self.sock is None:
             self._connect()
 
-    def send_success_check_done(self):
+    def send_success_check_done(self) -> tuple[bool, dict[str, object] | None, dict[str, object]]:
         """Send success signal to server, and then wait for server to confirm if this is the last step or if there are more steps to come.
 
         If done=False (more stages remaining), automatically sends RESET to continue to next stage.
@@ -364,7 +364,7 @@ class RemoteEnv(gym.Env):
             info = {'new_reward': SUCCESS_REWARD}
         return done, None, info
 
-    def step(self, action: np.ndarray) -> Tuple[Dict[str, Any], float, bool, bool, Dict[str, Any]]:
+    def step(self, action: np.ndarray) -> tuple[dict[str, object], float, bool, bool, dict[str, object]]:
         """Execute action and return next observation.
 
         If connection is lost, returns a truncated episode with disconnected flag
@@ -456,7 +456,7 @@ class RemoteEnv(gym.Env):
             # Return truncated=True to signal episode end
             return dummy_obs, STEP_REWARD, False, True, info
 
-    def _get_dummy_observation(self) -> Dict[str, Any]:
+    def _get_dummy_observation(self) -> dict[str, object]:
         """Return a safe dummy observation when connection is lost."""
         if self.obs_format == 'droid':
             return {
@@ -483,7 +483,7 @@ class RemoteEnv(gym.Env):
                 'prompt': '',
             }
 
-    def _format_observation(self, obs: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_observation(self, obs: dict[str, object]) -> dict[str, object]:
         """Format observation based on obs_format."""
         if self.obs_format == 'droid':
             # Already in DROID format from server
@@ -510,7 +510,7 @@ class RemoteEnv(gym.Env):
         else:
             return obs
 
-    def close(self):
+    def close(self) -> None:
         """Close connection to server."""
         if self.sock:
             try:
@@ -524,12 +524,12 @@ class RemoteEnv(gym.Env):
             self.sock = None
             print('✓ Disconnected from remote server')
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Cleanup on deletion."""
         self.close()
 
 
 # Convenience function for registration
-def make_remote_env(server_url: str, **kwargs) -> RemoteEnv:
+def make_remote_env(server_url: str, **kwargs: object) -> RemoteEnv:
     """Create a remote environment."""
     return RemoteEnv(server_url, **kwargs)

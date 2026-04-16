@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -15,7 +15,7 @@ log = lambda msg, color='bright_green': cprint(msg, color)
 class EnsembleMember(nn.Module):
     """Simple MLP that predicts actions from observations."""
 
-    def __init__(self, obs_dim, action_dim, hidden_size=512, num_layers=3):
+    def __init__(self, obs_dim: int, action_dim: int, hidden_size: int = 512, num_layers: int = 3) -> None:
         super().__init__()
         layers = []
         in_dim = obs_dim
@@ -25,7 +25,7 @@ class EnsembleMember(nn.Module):
         layers.append(nn.Linear(in_dim, action_dim))
         self.net = nn.Sequential(*layers)
 
-    def forward(self, obs):
+    def forward(self, obs: torch.Tensor) -> torch.Tensor:
         return self.net(obs)
 
 
@@ -39,8 +39,15 @@ class PosteriorVarianceEstimator:
         var = estimator.compute_covariance(obs_tensor)  # [N, action_dim]
     """
 
-    def __init__(self, obs_dim, action_dim, ensemble_size=10,
-                 hidden_size=512, num_layers=3, device='cpu'):
+    def __init__(
+        self,
+        obs_dim: int,
+        action_dim: int,
+        ensemble_size: int = 10,
+        hidden_size: int = 512,
+        num_layers: int = 3,
+        device: str | torch.device = 'cpu',
+    ) -> None:
         self.obs_dim = obs_dim
         self.action_dim = action_dim
         self.ensemble_size = ensemble_size
@@ -50,8 +57,15 @@ class PosteriorVarianceEstimator:
             for _ in range(ensemble_size)
         ]
 
-    def fit(self, obs, actions, num_epochs=3000, lr=3e-4, batch_size=4096,
-            patience=50):
+    def fit(
+        self,
+        obs: np.ndarray,
+        actions: np.ndarray,
+        num_epochs: int = 3000,
+        lr: float = 3e-4,
+        batch_size: int = 4096,
+        patience: int = 50,
+    ) -> None:
         """Train each ensemble member on a bootstrapped resample of the data.
 
         Args:
@@ -114,7 +128,7 @@ class PosteriorVarianceEstimator:
             log(f'Ensemble member {k + 1}/{self.ensemble_size} trained (loss={avg_loss:.6f})')
 
     @torch.no_grad()
-    def compute_covariance(self, obs):
+    def compute_covariance(self, obs: torch.Tensor) -> torch.Tensor:
         """Compute diagonal posterior variance for a batch of observations.
 
         Args:
@@ -128,7 +142,7 @@ class PosteriorVarianceEstimator:
         var = ((preds - mean.unsqueeze(0)) ** 2).mean(dim=0)  # [N, action_dim]
         return var
 
-    def save(self, path):
+    def save(self, path: str | Path) -> None:
         """Save all ensemble member state dicts."""
         state = {
             'obs_dim': self.obs_dim,
@@ -139,7 +153,7 @@ class PosteriorVarianceEstimator:
         torch.save(state, path)
         log(f'Saved ensemble to {path}')
 
-    def load(self, path):
+    def load(self, path: str | Path) -> None:
         """Load ensemble member state dicts."""
         state = torch.load(path, map_location=self.device)
         for m, sd in zip(self.members, state['members']):
@@ -147,7 +161,9 @@ class PosteriorVarianceEstimator:
         log(f'Loaded ensemble from {path}')
 
 
-def relabel_actions_postbc(actions, obs, estimator, alpha=1.0):
+def relabel_actions_postbc(
+    actions: torch.Tensor, obs: torch.Tensor, estimator: PosteriorVarianceEstimator, alpha: float = 1.0
+) -> torch.Tensor:
     """Perturb action targets by posterior-scaled noise.
 
     Args:

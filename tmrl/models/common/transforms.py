@@ -20,7 +20,7 @@ class ToTensor(nn.Module):
     and normalize the pixel values to the range [0, 1].
     """
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         return inputs.permute((0, 3, 1, 2)).contiguous().float().div_(255.0)
 
 
@@ -29,12 +29,12 @@ class AutoRandomCrop(nn.Module):
     Perform random cropping during training and center cropping during eval.
     """
 
-    def __init__(self, size: tuple[int, int]):
+    def __init__(self, size: tuple[int, int]) -> None:
         super().__init__()
         self.size = size
         self.random_crop = RandomCrop(size=size)
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if self.training:
             return self.random_crop(inputs)
         else:
@@ -53,7 +53,7 @@ class AutoColorJitter(nn.Module):
         contrast: float,
         saturation: float,
         hue: tuple[float],
-    ):
+    ) -> None:
         super().__init__()
         self.color_jitter = ColorJitter(
             brightness=brightness,
@@ -62,7 +62,7 @@ class AutoColorJitter(nn.Module):
             hue=tuple(hue),
         )
 
-    def forward(self, inputs: torch.Tensor):
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         if self.training:
             return self.color_jitter(inputs)
         else:
@@ -74,7 +74,7 @@ class VAEDownsample(nn.Module):
     Downsample images using a pre-trained VAE.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         # Input normalization
         self.norm = Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5], inplace=True)
@@ -96,14 +96,14 @@ class VAEDownsample(nn.Module):
             p.requires_grad = False
         self.scaling_factor = self.vae.config.scaling_factor
 
-    def forward(self, images: torch.Tensor):
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
         images = self.norm(images)
         feats = self.vae.encode(images).latent_dist.sample()
         feats = feats.mul_(self.scaling_factor)
         feats = feats.sub_(self.shift).div_(self.scale)
         return feats
 
-    def inverse(self, feats: torch.Tensor):
+    def inverse(self, feats: torch.Tensor) -> torch.Tensor:
         feats = feats.mul_(self.scale).add_(self.shift)
         feats = feats.div_(self.scaling_factor)
         images = self.vae.decode(feats).sample
@@ -124,7 +124,7 @@ class ImageTransform(nn.Module):
         color_jitter: Optional[dict] = None,
         downsample: bool = False,
         imagenet_norm: bool = True,
-    ):
+    ) -> None:
         super().__init__()
         transform = list()
 
@@ -164,11 +164,11 @@ class ImageTransform(nn.Module):
         self.transform = nn.Sequential(*transform)
 
     @property
-    def vae(self):
+    def vae(self) -> VAEDownsample:
         assert isinstance(self.transform[-1], VAEDownsample)
         return self.transform[-1]
 
-    def forward(self, images):
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
         return self.transform(images)
 
 
@@ -177,7 +177,7 @@ class VideoTransform(ImageTransform):
     Flatten videos to images, apply transforms, and reshape back to videos.
     """
 
-    def forward(self, images):
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
         num_frames = images.shape[1]
         images = rearrange(images, 'b t h w c-> (b t) h w c')
         images = self.transform(images)

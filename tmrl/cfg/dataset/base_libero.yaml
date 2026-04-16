@@ -7,4 +7,4 @@ action_len: 32
 context_dim: 2048
 
 defaults:
-- base
+  - base

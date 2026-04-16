@@ -1,4 +1,3 @@
-from typing import Any
 import time
 
 import cv2
@@ -18,147 +17,13 @@ LOG_STD_MAX = 2
 LOG_STD_MIN = -5
 
 
-def get_color(intensity, base_color='blue'):
-    """Returns an RGB color that fades from gray to the target color based on intensity in [0,1]."""
-    base_rgb = {
-        'red': (255, 100, 100),
-        'green': (100, 255, 100),
-        'blue': (100, 100, 255),
-        'orange': (255, 165, 100),
-    }.get(base_color, (100, 100, 255))  # default: blueish
-
-    gray = (200, 200, 200)  # light neutral background
-
-    r = int((1 - intensity) * gray[0] + intensity * base_rgb[0])
-    g = int((1 - intensity) * gray[1] + intensity * base_rgb[1])
-    b = int((1 - intensity) * gray[2] + intensity * base_rgb[2])
-
-    return (r, g, b)
-
-
-def add_label(frame, action, tcont_context):  # action_bound):
-    """Add timestep labels with smooth color gradients and entropy indicator."""
-    labeled_frame = frame.copy()
-
-    if labeled_frame.shape[0] != 1024:
-        labeled_frame = cv2.resize(labeled_frame, (1024, 1024))
-
-    if action.ndim == 2:  # mean over sequence dim
-        action = action.mean(0)
-
-    indicators = []
-
-    if tcont_context is not None:
-        tcont_val = float(tcont_context.item()) if hasattr(tcont_context, 'item') else float(tcont_context)
-        indicators.append(('timestep', 1.0 - tcont_val, 'blue'))
-
-    n_lines = len(indicators)
-    if n_lines == 0:
-        return labeled_frame
-
-    # Panel height calculation based on text height + margins
-    font = cv2.FONT_HERSHEY_DUPLEX
-    font_scale = 0.6
-    thickness = 2
-    text_height = cv2.getTextSize('sample', font, font_scale, thickness)[0][1]
-    padding = 8  # padding inside box
-
-    panel_h = n_lines * text_height + (n_lines + 1) * padding
-
-    # Draw semi-transparent overlay box
-    top = 100  # moved down by +30
-    overlay = labeled_frame.copy()
-    cv2.rectangle(overlay, (15, top), (300, top + panel_h), (240, 240, 240), -1)
-    cv2.addWeighted(overlay, 0.8, labeled_frame, 0.2, 0, labeled_frame)
-    cv2.rectangle(labeled_frame, (15, top), (300, top + panel_h), (180, 180, 180), 1)
-
-    # Dynamic vertical spacing
-    y_pos = top + padding + text_height  # start inside the box
-
-    bar_left = 180  # Increased from 140 for more space between numbers and the bar
-    bar_right = 280  # Increased to keep bar same width (100px)
-
-    for ind in indicators:
-        label = ind[0]
-        value = ind[1]
-        base_color = ind[2]
-        display_val = ind[3] if label == 'ent' else value
-
-        color = get_color(value, base_color=base_color)
-        text = f'{label}: {display_val:.3f}'
-        cv2.putText(labeled_frame, text, (22, y_pos + 1), font, font_scale, (0, 0, 0), thickness)
-        cv2.putText(labeled_frame, text, (20, y_pos), font, font_scale, color, thickness)
-
-        # Draw progress bar with more space to the right of the numbers
-        bar_w = int(100 * value)
-        bar_x1 = bar_left
-        bar_x2 = bar_left + 100
-        bar_y1 = y_pos - text_height + 2
-        bar_y2 = y_pos - text_height + 8
-        cv2.rectangle(labeled_frame, (bar_x1, bar_y1), (bar_x2, bar_y2), (60, 60, 60), -1)
-        if bar_w > 0:
-            cv2.rectangle(labeled_frame, (bar_x1, bar_y1), (bar_x1 + bar_w, bar_y2), color, -1)
-
-        y_pos += text_height + padding
-
-    return labeled_frame
-
-
-def add_label_simple(frame, texts):
-    """
-    Draw a labeled info panel (same size/placement as original) on the frame.
-
-    Args:
-        frame: np.ndarray (H, W, 3)
-        texts: list of str, each line of text to display
-    """
-    labeled_frame = frame.copy()
-
-    # Resize for consistent layout
-    if labeled_frame.shape[0] != 1024:
-        labeled_frame = cv2.resize(labeled_frame, (1024, 1024))
-
-    # Font settings (same as original)
-    font = cv2.FONT_HERSHEY_DUPLEX
-    font_scale = 0.6
-    thickness = 2
-    padding = 8
-
-    # Estimate text height and total panel height
-    text_height = cv2.getTextSize('sample', font, font_scale, thickness)[0][1]
-    n_lines = len(texts)
-    panel_h = n_lines * text_height + (n_lines + 1) * padding
-
-    # Panel placement
-    top = 60
-    left = 15
-    right = 300
-
-    # Semi-transparent background box
-    overlay = labeled_frame.copy()
-    cv2.rectangle(overlay, (left, top), (right, top + panel_h), (240, 240, 240), -1)
-    cv2.addWeighted(overlay, 0.8, labeled_frame, 0.2, 0, labeled_frame)
-    cv2.rectangle(labeled_frame, (left, top), (right, top + panel_h), (180, 180, 180), 1)
-
-    # Draw text lines
-    y_pos = top + padding + text_height
-    for text in texts:
-        # Shadow text
-        cv2.putText(labeled_frame, text, (left + 7, y_pos + 1), font, font_scale, (0, 0, 0), thickness)
-        # Foreground text
-        cv2.putText(labeled_frame, text, (left + 5, y_pos), font, font_scale, (0, 120, 255), thickness)
-        y_pos += text_height + padding
-
-    return labeled_frame
-
-
-def evaluate_policy(
-    cfg,
-    env,
-    model,
-    log_data,
-    step,
-):
+def evaluate_policy_ogbench(
+    cfg: object,
+    env: object,
+    model: object,
+    log_data: dict[str, object],
+    step: int,
+) -> None:
     """
     Evaluate policy performance across multiple environments.
 
@@ -196,9 +61,6 @@ def evaluate_policy(
     action_means = []
     action_stds = []
 
-    if cfg.method in ['tmrl', 'tmrl_cfg']:
-        tcont_contexts = [[] for _ in range(n_evals)]  # store the timestep trajectories for each env
-
     obs, info = env.reset()
 
     if wandb.run is not None or cfg.debug:
@@ -230,7 +92,7 @@ def evaluate_policy(
             inputs = to_tensor(obs)
             (actor_actions, timesteps, context_noise), _, _ = model.actor.get_action(inputs)
 
-            if cfg.method in ['dsrl', 'tmrl', 'tmrl_cfg']:
+            if cfg.method in ['dsrl', 'tmrl']:
                 actions = infer_actions(cfg, model, obs, info, actor_actions, timesteps, context_noise)
 
             elif cfg.method == 'spirl':
@@ -253,10 +115,6 @@ def evaluate_policy(
         action_mins.append(actor_actions.min())
         action_means.append(actor_actions.mean())
         action_stds.append(actor_actions.std())
-
-        timesteps_np = None
-        if cfg.method in ['tmrl', 'tmrl_cfg']:
-            timesteps_np = timesteps.cpu().numpy()
 
         # Execute action chunk
         for i in range(action_exec_len):
@@ -297,21 +155,13 @@ def evaluate_policy(
                         viz_envs[viz_idx].unwrapped.set_goal(goal_xy=goal_xy)
                         viz_envs[viz_idx].unwrapped.set_xy(xy)
 
-                    viz_actor_actions = actor_actions[viz_idx]
-                    viz_tcont_context = timesteps_np[viz_idx] if timesteps_np is not None else None
-                    frame = add_label(
-                        viz_envs[viz_idx].render(),
-                        action=viz_actor_actions,
-                        tcont_context=viz_tcont_context,
-                    )
-
+                    frame = viz_envs[viz_idx].render()
                     frames[viz_idx].append(frame)
 
             env_step += 1
 
     if frames is not None and wandb.run is not None:
         log_frames = frames
-        # If nothing was recorded, skip logging
         if all(len(f) == 0 for f in log_frames):
             pass
         else:
@@ -356,32 +206,14 @@ def evaluate_policy(
     )
 
 
-def _log_eval_videos(log_data, frames, clean_frames, n_viz, info):
-    """Log side-by-side eval videos (with and without debug labels) to wandb."""
-    if wandb.run is None:
-        return
-
-    for log_key, clip_frames in [("eval/viz_clean", clean_frames), ("eval/viz", frames)]:
-        max_len = max(len(f) for f in clip_frames)
-
-        # Pad shorter sequences with their last frame
-        padded = []
-        for env_frames in clip_frames:
-            env_frames = list(env_frames)
-            env_frames += [env_frames[-1]] * (max_len - len(env_frames))
-            padded.append(env_frames)
-
-        # (n_viz, F, H, W, C) -> (F, C, H, n_viz*W)
-        arr = np.stack(padded, axis=0).transpose(1, 0, 2, 3, 4)
-        F, n, H, W, C = arr.shape
-        arr = arr.transpose(0, 2, 1, 3, 4).reshape(F, H, n * W, C).transpose(0, 3, 1, 2)
-
-        log_data[log_key] = wandb.Video(
-            arr, fps=10, format="mp4", caption=info[0]["language_instruction"]
-        )
-
-
-def evaluate_policy_libero(cfg, model, log_data, step, image_encoder=None, env=None):
+def evaluate_policy_libero(
+    cfg: object,
+    model: object,
+    log_data: dict[str, object],
+    step: int,
+    image_encoder: object | None = None,
+    env: object | None = None,
+) -> None:
     """
     Evaluate policy performance across multiple LIBERO environments.
 
@@ -413,7 +245,7 @@ def evaluate_policy_libero(cfg, model, log_data, step, image_encoder=None, env=N
     # Evaluation config
     max_ep_steps = cfg.dataset.max_ep_steps
     uses_chunking = cfg.method in ["tmrl", "dsrl", "spirl"]
-    uses_timesteps = cfg.method in ["tmrl", "tmrl_cfg"]
+    uses_timesteps = cfg.method == "tmrl"
     action_exec_len = cfg.action_exec_len if uses_chunking else 1
 
     # Logging state
@@ -424,7 +256,6 @@ def evaluate_policy_libero(cfg, model, log_data, step, image_encoder=None, env=N
     rewards = np.zeros(n_evals)
     ep_lengths = np.zeros(n_evals)
     frames = [[] for _ in range(n_viz)]
-    clean_frames = [[] for _ in range(n_viz)]
 
     alive = list(range(n_evals))
     steps = 0
@@ -471,12 +302,7 @@ def evaluate_policy_libero(cfg, model, log_data, step, image_encoder=None, env=N
                     if e < n_viz and steps % 3 == 0:
                         current_frame = obs_step["observation/image"][e]
                         current_frame = np.clip(current_frame.astype(np.float32) * 1.3, 0, 255).astype(np.uint8)
-                        clean_frames[e].append(current_frame)
-                        tcont_context_val = (
-                            (ts[e] * cfg.timestep_max / 2) + (cfg.timestep_max / 2)
-                            if uses_timesteps else None
-                        )
-                        frames[e].append(add_label(current_frame, action=action_noise[e], tcont_context=tcont_context_val))
+                        frames[e].append(current_frame)
 
             newly_done = [e for e in alive if done_step[e] and not dones[e]]
             if newly_done:
@@ -493,7 +319,23 @@ def evaluate_policy_libero(cfg, model, log_data, step, image_encoder=None, env=N
         obs = obs_step
 
     # Logging
-    _log_eval_videos(log_data, frames, clean_frames, n_viz, info)
+    if wandb.run is not None:
+        valid = [f for f in frames if f]
+        if valid:
+            max_len = max(len(f) for f in valid)
+            padded = []
+            for env_frames in valid:
+                env_frames = list(env_frames)
+                env_frames += [env_frames[-1]] * (max_len - len(env_frames))
+                padded.append(env_frames)
+
+            # (n_viz, F, H, W, C) -> (F, C, H, n_viz*W)
+            arr = np.stack(padded, axis=0).transpose(1, 0, 2, 3, 4)
+            F, n, H, W, C = arr.shape
+            arr = arr.transpose(0, 2, 1, 3, 4).reshape(F, H, n * W, C).transpose(0, 3, 1, 2)
+            log_data["eval/viz"] = wandb.Video(
+                arr, fps=10, format="mp4", caption=info[0]["language_instruction"]
+            )
 
     log(
         f"eval at step {step} — success: {np.mean(dones):.2f} ({np.sum(dones)}/{len(dones)}), "
@@ -517,7 +359,14 @@ def evaluate_policy_libero(cfg, model, log_data, step, image_encoder=None, env=N
         env.close()
 
 
-def evaluate_policy_robot(cfg, eval_env, model, log_data, step, image_encoder=None):
+def evaluate_policy_robot(
+    cfg: object,
+    eval_env: object,
+    model: object,
+    log_data: dict[str, object],
+    step: int,
+    image_encoder: object | None = None,
+) -> None:
     """
     Evaluate policy performance across multiple robot embodiments.
 
@@ -543,8 +392,6 @@ def evaluate_policy_robot(cfg, eval_env, model, log_data, step, image_encoder=No
     all_timesteps = []  # per-step timestep values across all episodes
 
     frames = [[] for _ in range(n_viz)] if cfg.render_videos else None
-    labeled_frames = [[] for _ in range(n_viz)]  # always collect timestep-labeled frames
-
     for episode_idx in tqdm(range(n_evals), dynamic_ncols=True):
         sum_reward = 0
         is_done = False
@@ -575,7 +422,6 @@ def evaluate_policy_robot(cfg, eval_env, model, log_data, step, image_encoder=No
             else:
                 actions = infer_actions(cfg, model, raw_obs, action_noise, timesteps, context_noise)[:action_exec_len]
             actions = np.asarray(actions)
-            actions = np.clip(actions, -1, 1)
 
             obs, reward, terminated, truncated, info = eval_env.step(actions)
             sum_reward += float(reward)
@@ -597,16 +443,7 @@ def evaluate_policy_robot(cfg, eval_env, model, log_data, step, image_encoder=No
             # Video frames
             frame = obs.get('observation/exterior_image_1_left', obs.get('observation/image'))
             if frame is not None and episode_idx < n_viz:
-                if frames is not None:
-                    frames[episode_idx].append(frame)
-                if cfg.method == 'tmrl':
-                    t_val = float(timesteps.mean()) * cfg.timestep_max / 2 + cfg.timestep_max / 2
-                    label_text = f't={t_val:.4f}'
-                else:
-                    label_text = None
-                labeled_frames[episode_idx].append(
-                    add_label_simple(frame, [label_text]) if label_text else frame
-                )
+                frames[episode_idx].append(frame)
 
         all_rewards.append(sum_reward)
         all_steps.append(step_count)
@@ -655,24 +492,19 @@ def evaluate_policy_robot(cfg, eval_env, model, log_data, step, image_encoder=No
             'eval/timestep_sequences': all_timesteps} if flat_timesteps else {}),
     })
 
-    # Store per-episode labeled frame sequences for callers (e.g. eval_checkpoints.py)
-    log_data['eval/episode_labeled_frames'] = [
-        np.stack(ep) for ep in labeled_frames if ep
-    ]
-
     if frames is not None:
-        for log_frames, log_key in zip([frames, labeled_frames], ['eval/video', 'eval/labeled_video']):
-            max_len = max((len(f) for f in log_frames), default=0)
-            for i in range(n_viz):
-                if log_frames[i] and len(log_frames[i]) < max_len:
-                    log_frames[i].extend([log_frames[i][-1]] * (max_len - len(log_frames[i])))
-            valid = [f for f in log_frames if f]
-            if valid:
-                ref_shape = valid[0][0].shape[:2]  # (H, W) from first frame
-                def _resize_frames(episode_frames, shape):
-                    import cv2
-                    return [cv2.resize(fr, (shape[1], shape[0])) if fr.shape[:2] != shape else fr
-                            for fr in episode_frames]
-                valid = [_resize_frames(f, ref_shape) for f in valid]
-                arr = np.concatenate([np.stack(f) for f in valid], axis=2)
-                log_data[log_key] = wandb.Video(arr.transpose(0, 3, 1, 2), fps=10, format='mp4')
+        max_len = max((len(f) for f in frames), default=0)
+        for i in range(n_viz):
+            if frames[i] and len(frames[i]) < max_len:
+                frames[i].extend([frames[i][-1]] * (max_len - len(frames[i])))
+        valid = [f for f in frames if f]
+        if valid:
+            ref_shape = valid[0][0].shape[:2]  # (H, W) from first frame
+            def _resize_frames(
+                episode_frames: list[np.ndarray], shape: tuple[int, int]
+            ) -> list[np.ndarray]:
+                return [cv2.resize(fr, (shape[1], shape[0])) if fr.shape[:2] != shape else fr
+                        for fr in episode_frames]
+            valid = [_resize_frames(f, ref_shape) for f in valid]
+            arr = np.concatenate([np.stack(f) for f in valid], axis=2)
+            log_data['eval/video'] = wandb.Video(arr.transpose(0, 3, 1, 2), fps=10, format='mp4')

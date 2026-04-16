@@ -1,19 +1,17 @@
 from typing import Callable
+from typing import Tuple
 
 import timm
 import torch
 import torch.nn as nn
+from torch import Tensor
 import torchvision
 from einops import rearrange
 from torchvision.transforms import Normalize
-from typing import Tuple
 from transformers import Dinov2WithRegistersModel
-from torch import nn
-import torch
-from math import *
 
 
-def get_imagenet_norm(inplace=True):
+def get_imagenet_norm(inplace: bool = True) -> Normalize:
     """
     Construct an ImageNet normalization transform.
     """
@@ -61,7 +59,9 @@ def replace_submodules(
     return root_module
 
 
-def get_resnet(name, embed_dim, weights=None, replace_batch_norm=True, **kwargs):
+def get_resnet(
+    name: str, embed_dim: int, weights: object = None, replace_batch_norm: bool = True, **kwargs: object
+) -> nn.Module:
     """
     Construct a ResNet model with a custom output embedding dimension and optional batch norm replacement.
 
@@ -86,7 +86,7 @@ def get_resnet(name, embed_dim, weights=None, replace_batch_norm=True, **kwargs)
     return resnet
 
 
-def get_vit(name, embed_dim, weights=None, **kwargs):
+def get_vit(name: str, embed_dim: int, weights: object = None, **kwargs: object) -> nn.Module:
     """
     Construct a Vision Transformer (ViT) model with a custom output embedding dimension.
 
@@ -102,7 +102,7 @@ def get_vit(name, embed_dim, weights=None, **kwargs):
     return vit
 
 
-def get_clip(embed_dim, **kwargs):
+def get_clip(embed_dim: int, **kwargs: object) -> nn.Module:
     """
     Construct a pretrained CLIP encoder with a custom output embedding dimension.
 
@@ -115,7 +115,7 @@ def get_clip(embed_dim, **kwargs):
     return clip
 
 
-def get_dinov3():
+def get_dinov3() -> nn.Module:
     """
     Construct a DINOv3 model with a custom output embedding dimension.
 
@@ -169,13 +169,13 @@ class ResNetImageEncoder(nn.Module):
         embed_dim (int): Dimension of the output embedding features.
     """
 
-    def __init__(self, num_views: int, embed_dim: int):
+    def __init__(self, num_views: int, embed_dim: int) -> None:
         super().__init__()
         self.num_views = num_views
         self.norm = get_imagenet_norm()
         self.model = get_resnet('resnet18', embed_dim, weights='IMAGENET1K_V1')
 
-    def forward(self, imgs: torch.Tensor):
+    def forward(self, imgs: torch.Tensor) -> torch.Tensor:
         B, V = imgs.shape[:2]
         imgs = rearrange(imgs, 'b v c t h w -> (b v t) c h w')
         feats = self.model(self.norm(imgs))
@@ -192,13 +192,13 @@ class ViTImageEncoder(nn.Module):
         embed_dim (int): Dimension of the output embedding features.
     """
 
-    def __init__(self, num_views: int, embed_dim: int):
+    def __init__(self, num_views: int, embed_dim: int) -> None:
         super().__init__()
         self.num_views = num_views
         self.norm = get_imagenet_norm()
         self.model = get_vit('vit_b_32', embed_dim, weights='IMAGENET1K_V1')
 
-    def forward(self, imgs: torch.Tensor):
+    def forward(self, imgs: torch.Tensor) -> torch.Tensor:
         B, V = imgs.shape[:2]
         imgs = rearrange(imgs, 'b v c t h w -> (b v t) c h w')
         imgs = self.norm(imgs)
@@ -227,7 +227,7 @@ class ViTImagePatchEncoder(nn.Module):
         embed_dim (int): Dimension of the output embedding features.
     """
 
-    def __init__(self, num_views: int, num_frames: int, embed_dim: int):
+    def __init__(self, num_views: int, num_frames: int, embed_dim: int) -> None:
         super().__init__()
         self.num_views = num_views
         self.norm = get_imagenet_norm()
@@ -243,7 +243,7 @@ class ViTImagePatchEncoder(nn.Module):
             requires_grad=True,
         )
 
-    def forward(self, imgs: torch.Tensor):
+    def forward(self, imgs: torch.Tensor) -> torch.Tensor:
         B, V = imgs.shape[:2]
         imgs = rearrange(imgs, 'b v c t h w -> (b v t) c h w')
         imgs = self.norm(imgs)
@@ -286,7 +286,7 @@ class DinoImageEncoder(nn.Module):
         weights_path (str): Path to the pretrained weights file.
     """
 
-    def __init__(self, num_views: int, embed_dim: int):
+    def __init__(self, num_views: int, embed_dim: int) -> None:
         super().__init__()
         self.num_views = num_views
         self.norm = get_imagenet_norm()
@@ -296,7 +296,7 @@ class DinoImageEncoder(nn.Module):
         self.model.eval()
         self.model.requires_grad_(False)
 
-    def forward(self, imgs: torch.Tensor, **kwargs):
+    def forward(self, imgs: torch.Tensor, **kwargs: object) -> torch.Tensor:
         B, V = imgs.shape[:2]
 
         # Ensure images are in [0, 1] range
@@ -316,7 +316,7 @@ class Dinov2withNorm(nn.Module):
         self,
         dinov2_path: str = 'facebook/dinov2-with-registers-base',
         normalize: bool = True,
-    ):
+    ) -> None:
         """
         Adapted from: https://github.com/bytetriper/RAE/blob/main/src/stage1/encoders/dinov2.py
         """
@@ -334,7 +334,7 @@ class Dinov2withNorm(nn.Module):
         self.patch_size = self.encoder.config.patch_size
         self.hidden_size = self.encoder.config.hidden_size
 
-    def dinov2_forward(self, x: torch.Tensor, output_hidden_states=False) -> torch.Tensor:
+    def dinov2_forward(self, x: torch.Tensor, output_hidden_states: bool = False) -> torch.Tensor:
         x = self.encoder(x, output_hidden_states=True)
         unused_token_num = 5  # 1 CLS + 4 register tokens
         image_features = x.last_hidden_state[:, unused_token_num:]
@@ -345,7 +345,7 @@ class Dinov2withNorm(nn.Module):
             pooled = image_features.mean(dim=1)  # [B, D]
             return pooled
 
-    def forward(self, x: torch.Tensor, output_hidden_states=False) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, output_hidden_states: bool = False) -> torch.Tensor:
         return self.dinov2_forward(x, output_hidden_states=output_hidden_states)
 
 
@@ -357,7 +357,7 @@ class MultiViewVideoPatchifier(nn.Module):
         patch_shape: Tuple[int, ...] = (2, 8, 8),
         num_chans: int = 3,
         embed_dim: int = 768,
-    ):
+    ) -> None:
         super().__init__()
         self.num_views = num_views
         iT, iH, iW = input_shape
@@ -373,16 +373,16 @@ class MultiViewVideoPatchifier(nn.Module):
         )
         self.patch_decoder = nn.Linear(embed_dim, num_chans * pT * pH * pW)
 
-    def forward(self, imgs):
+    def forward(self, imgs: Tensor) -> Tensor:
         return self.patchify(imgs)
 
-    def patchify(self, imgs):
+    def patchify(self, imgs: Tensor) -> Tensor:
         imgs = rearrange(imgs, 'b v c t h w -> (b v) c t h w')
         feats = self.patch_encoder(imgs)
         feats = rearrange(feats, '(b v) c t h w -> b (v t h w) c', v=self.num_views)
         return feats
 
-    def unpatchify(self, feats):
+    def unpatchify(self, feats: Tensor) -> Tensor:
         imgs = self.patch_decoder(feats)
         imgs = rearrange(
             imgs,
@@ -398,5 +398,5 @@ class MultiViewVideoPatchifier(nn.Module):
         return imgs
 
     @property
-    def num_patches(self):
+    def num_patches(self) -> int:
         return self.num_views * self.T * self.H * self.W

@@ -9,19 +9,20 @@ from tqdm import tqdm
 import wandb
 from tmrl.utils.buffer import TrajectoryReplayBuffer, flush_traj_to_buffer
 from tmrl.utils.logging import cprint
-from tmrl.utils.eval import evaluate_policy
+from tmrl.utils.eval import evaluate_policy_ogbench
 from tmrl.utils.env import setup_envs
 from tmrl.utils.common import (
-    set_seed, load_checkpoint, merge_batches, to_device, create_optimizers,
-    check_memory_kill_switch, to_tensor
+    set_seed, load_checkpoint, merge_batches, to_device, create_optimizers, to_tensor
 )
 
 
-def log(msg, color='bright_green'):
+def log(msg: str, color: str = 'bright_green') -> None:
     cprint(msg, color)
 
 
-def sample_random_actions(cfg, action_dim, context_dim):
+def sample_random_actions(
+    cfg: object, action_dim: int, context_dim: int
+) -> tuple[torch.Tensor, torch.Tensor | None, torch.Tensor | None]:
     """Sample random actions for replay buffer warm-up."""
 
     action_noise = np.random.uniform(
@@ -37,7 +38,15 @@ def sample_random_actions(cfg, action_dim, context_dim):
     return action_noise, timesteps, context_noise
 
 
-def infer_actions(cfg, model, obs, info, action_noise, timesteps, context_noise):
+def infer_actions(
+    cfg: object,
+    model: object,
+    obs: np.ndarray | torch.Tensor,
+    info: dict[str, Any],
+    action_noise: np.ndarray | torch.Tensor,
+    timesteps: np.ndarray | torch.Tensor | None,
+    context_noise: np.ndarray | torch.Tensor | None,
+) -> torch.Tensor:
     obs = to_tensor(obs)
     goal = to_tensor(info['goal']) if 'goal' in info else None
     if goal is not None:
@@ -50,14 +59,8 @@ def infer_actions(cfg, model, obs, info, action_noise, timesteps, context_noise)
         action_noise = to_tensor(action_noise)
         if method == 'tmrl':
             context_noise = to_tensor(context_noise)
-            if cfg.fixed_tcont_context is not None:
-                assert cfg.fixed_tcont_context >= 0.0 and cfg.fixed_tcont_context <= 1.0, (
-                    f'fixed_tcont_context out of range: [{cfg.fixed_tcont_context}]'
-                )
-                tcont_context = torch.full_like(timesteps, cfg.fixed_tcont_context)
-            else:
-                timesteps = to_tensor(timesteps)
-                tcont_context = (timesteps * cfg.timestep_max / 2) + (cfg.timestep_max / 2)
+            timesteps = to_tensor(timesteps)
+            tcont_context = (timesteps * cfg.timestep_max / 2) + (cfg.timestep_max / 2)
         else:
             tcont_context = None
 
@@ -79,7 +82,7 @@ def infer_actions(cfg, model, obs, info, action_noise, timesteps, context_noise)
     config_path='tmrl/cfg',
     config_name='sac_ogbench.yaml',
 )
-def main(cfg):
+def main(cfg: object) -> None:
     if cfg.debug:
         cfg.n_envs = 1
         cfg.n_evals = 2
@@ -130,12 +133,12 @@ def main(cfg):
     # Dims
     obs_dim = cfg.dataset.obs_dim
     goal_dim = cfg.dataset.goal_dim
-    # env_obs_dim is what the env actually returns (and what actor/critic/buffer use)
     env_obs_dim = obs_dim + goal_dim if is_cube else obs_dim
     action_dim = cfg.dataset.action_dim
     context_dim = cfg.model.context_dim
     action_len = cfg.dataset.action_len
-    action_exec_len = cfg.action_exec_len
+    uses_chunking = cfg.method in ['tmrl', 'dsrl', 'spirl']
+    action_exec_len = cfg.action_exec_len if uses_chunking else 1
     state_dim = cfg.dataset.state_dim
     actor_action_dim = action_dim + 1 if cfg.method in ['tmrl'] else action_dim
 
@@ -207,12 +210,11 @@ def main(cfg):
     while env_step <= cfg.train_steps:
         log_data = {}
         step_time = time.time()
-        check_memory_kill_switch()
 
         # Periodic eval
         if env_step % cfg.eval_interval == 0 and not (cfg.skip_first and env_step == 0):
             model.eval()
-            evaluate_policy(cfg=cfg, env=eval_env, model=model, log_data=log_data, step=env_step)
+            evaluate_policy_ogbench(cfg=cfg, env=eval_env, model=model, log_data=log_data, step=env_step)
             model.train()
 
         # Sample actions

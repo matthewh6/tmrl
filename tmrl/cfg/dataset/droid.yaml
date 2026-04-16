@@ -1,9 +1,9 @@
 name: droid
 
-obs_dim: 1536 # image + wrist (2) * dino embedding (768)
+obs_dim: 1536
 state_dim: 8
 action_dim: 7
-action_len: 1
+action_len: 1 # following dsrl convention of predicting a vector and repeating for chunk_len
 
 defaults:
-- base_robot
+  - base_robot

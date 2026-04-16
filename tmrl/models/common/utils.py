@@ -2,9 +2,10 @@ import math
 
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 
-def apply_rotary_embed(x, thetas):
+def apply_rotary_embed(x: Tensor, thetas: Tensor) -> Tensor:
     """Rotates the input tensors by the positional embeddings.
 
     Args:
@@ -20,7 +21,7 @@ def apply_rotary_embed(x, thetas):
     return x * thetas.cos() + x_rotate_half * thetas.sin()
 
 
-def init_weights(m):
+def init_weights(m: nn.Module) -> None:
     if isinstance(m, nn.Linear):
         nn.init.normal_(m.weight, mean=0.0, std=0.02)
         if isinstance(m, nn.Linear) and m.bias is not None:
@@ -32,17 +33,17 @@ def init_weights(m):
 
 
 class FiLMBlock(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super(FiLMBlock, self).__init__()
 
-    def forward(self, x, gamma, beta):
+    def forward(self, x: Tensor, gamma: Tensor, beta: Tensor) -> Tensor:
         x = gamma * x + beta
 
         return x
 
 
 class DualTimestepEncoder(nn.Module):
-    def __init__(self, embed_dim: int, mlp_ratio: float = 4.0):
+    def __init__(self, embed_dim: int, mlp_ratio: float = 4.0) -> None:
         super().__init__()
         self.sinusoidal_pos_emb = SinusoidalPosEmb(embed_dim)
         hidden_dim = int(embed_dim * mlp_ratio)
@@ -52,7 +53,7 @@ class DualTimestepEncoder(nn.Module):
             nn.Linear(hidden_dim, embed_dim),
         )
 
-    def forward(self, t1, t2):
+    def forward(self, t1: Tensor, t2: Tensor) -> Tensor:
         temb1 = self.sinusoidal_pos_emb(t1)
         temb2 = self.sinusoidal_pos_emb(t2)
         temb = torch.cat([temb1, temb2], dim=-1)
@@ -60,11 +61,11 @@ class DualTimestepEncoder(nn.Module):
 
 
 class SinusoidalPosEmb(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim: int) -> None:
         super().__init__()
         self.dim = dim
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         half_dim = self.dim // 2
         emb = math.log(10000) / (half_dim - 1)
         emb = torch.exp(torch.arange(half_dim, device=x.device) * -emb)
@@ -74,18 +75,18 @@ class SinusoidalPosEmb(nn.Module):
 
 
 class Downsample1d(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim: int) -> None:
         super().__init__()
         self.conv = nn.Conv1d(dim, dim, 3, 2, 1)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.conv(x)
 
 
 class Upsample1d(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim: int) -> None:
         super().__init__()
         self.conv = nn.ConvTranspose1d(dim, dim, 4, 2, 1)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         return self.conv(x)

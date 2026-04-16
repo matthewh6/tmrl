@@ -20,7 +20,9 @@ from tmrl.utils.common import set_seed
 log = lambda msg, color='bright_green': cprint(msg, color)
 
 
-def train_one_step(model, optimizer, scheduler, batch):
+def train_one_step(
+    model: object, optimizer: torch.optim.Optimizer, scheduler: object, batch: dict[str, torch.Tensor]
+) -> dict[str, object]:
     loss, info = model(**batch)
 
     # Step
@@ -39,10 +41,9 @@ def train_one_step(model, optimizer, scheduler, batch):
     config_path='tmrl/cfg',
     config_name='train.yaml',
 )
-def main(cfg):
+def main(cfg: object) -> None:
     if cfg.debug:
         cfg.log_interval = 10
-        cfg.n_envs = 3
 
     # Initialize wandb
     if cfg.use_wandb:

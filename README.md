@@ -3,10 +3,10 @@
 <div id="user-content-toc">
   <ul align="center" style="list-style: none;">
     <summary>
-      <h1>Turning the Dial: Diffusion Timestep-Modulated Reinforcement Learning for Tunable Exploration</h1>
+      <h1>TMRL: Context-Smoothed Pre-training Enables Efficient RL via Diffusion Timestep Modulation</h1>
       <h2>
-        <a href="">Paper</a> &emsp; 
-        <a href="">Website</a> &emsp;
+        <a href="">Paper</a> &emsp;
+        <a href="https://matthewh6.github.io/timestep-modulated-rl">Website</a> &emsp;
         <a href="">Thread</a>
       </h2>
     </summary>
@@ -29,8 +29,8 @@
 ### 1. Clone the repo with submodules
 
 ```bash
-git clone --recurse-submodules git@github.com:matthewh6/p-diff-exp.git
-cd p-diff-exp
+git clone --recurse-submodules git@github.com:matthewh6/tmrl.git
+cd tmrl
 
 # Or if you already cloned the repo:
 git submodule update --init --recursive
@@ -60,21 +60,7 @@ cd LIBERO_PRO
 uv pip install -r requirements.txt
 uv pip install -e .
 cd ..
-export PYTHONPATH=./LIBERO-PRO:$PYTHONPATH
-```
-
-## Local Config
-
-Create a file `cfg/local/default.yaml` with paths for your machine:
-
-```yaml
-# @package _global_
-
-paths:
-  project_dir: /path/to/project
-  data_dir: /path/to/data
-  results_dir: /path/to/results
-  wandb_dir: /path/to/wandb
+export PYTHONPATH=./LIBERO_PRO:$PYTHONPATH
 ```
 
 ## Low-level policy pre-training (OGBench)
@@ -118,7 +104,7 @@ python3 sac_ogbench.py dataset=cube method=tmrl ckpt=/path/to/ngcfp
 python3 sac_libero.py dataset=libero_90 method=tmrl ckpt=cspi0_libero
 
 # libero-goal
-python3 sac_libero.py dataset=libero_goal method=tmrl ckpt=cspi0_libero
+python3 sac_libero.py dataset=libero_goal perturbation=task method=tmrl ckpt=cspi0_libero
 
 # widowx
 python3 sac_robot.py dataset=widowx method=tmrl ckpt=cspi0_bridge
@@ -139,12 +125,8 @@ python3 sac_ogbench.py dataset=cube method=dsrl ckpt=/path/to/gcfp
 # libero-90
 python3 sac_libero.py dataset=libero_90 method=dsrl ckpt=pi0_libero
 
-python3 sac_libero.py dataset=libero_90 method=dsrl ckpt=postbc_libero/postbc_full_finetune/20000
-
 # libero-goal
-python3 sac_libero.py dataset=libero_goal method=dsrl ckpt=pi0_libero
-
-python3 sac_libero.py dataset=libero_goal method=dsrl ckpt=postbc_libero/postbc_full_finetune/20000 use_wandb=true perturbation=swap
+python3 sac_libero.py dataset=libero_goal perturbation=task method=dsrl ckpt=pi0_libero
 
 # widowx
 python3 sac_robot.py dataset=widowx method=dsrl ckpt=pi0_bridge
@@ -163,14 +145,14 @@ python3 sac_robot.py dataset=droid method=dsrl ckpt=pi0_droid
 
 ```bash
 # pointmaze
-python3 sac_ogbench.py dataset=pointmaze-giant  method=rlpd actor_action_dim=7
+python3 sac_ogbench.py dataset=pointmaze-giant method=rlpd actor_action_dim=7
 
 # cube
-python3 sac_ogbench.py dataset=cube  method=rlpd actor_action_dim=7
+python3 sac_ogbench.py dataset=cube method=rlpd actor_action_dim=7
 
 # libero-90
-python3 sac_libero.py dataset=libero_90  method=rlpd actor_action_dim=7
+python3 sac_libero.py dataset=libero_90 method=rlpd actor_action_dim=7
 
 # libero-goal
-python3 sac_libero.py dataset=libero_goal  method=rlpd actor_action_dim=7
+python3 sac_libero.py dataset=libero_goal perturbation=task method=rlpd actor_action_dim=7
 ```

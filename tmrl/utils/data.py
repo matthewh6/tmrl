@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any
 
 import json
 import os
@@ -12,15 +12,13 @@ from tqdm import tqdm
 import ogbench
 from libero.libero import benchmark
 from tmrl.utils.logging import cprint
-import gc
-import psutil
 
 
 log = lambda msg, color='bright_green': cprint(msg, color)
 
 
 class MazeDataset(Dataset):
-    def __init__(self, data: Dict[str, torch.Tensor], action_len: int, discount: float):
+    def __init__(self, data: dict[str, torch.Tensor], action_len: int, discount: float) -> None:
         self.data = data
         self.action_len = action_len
         self.discount = discount
@@ -40,13 +38,13 @@ class MazeDataset(Dataset):
         self.size = len(self.valid_starts)
         self.terminal_locs = np.where(terminals == 1)[0]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.valid_starts)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         return self.sample(idx)
 
-    def sample(self, batch_size: int):
+    def sample(self, batch_size: int) -> dict[str, torch.Tensor]:
         idxs = torch.randint(0, self.size, (batch_size,))
         starts = self.valid_starts[idxs]
         ends = starts + self.action_len
@@ -91,7 +89,7 @@ class MazeDataset(Dataset):
 
 
 class CubeDataset(Dataset):
-    def __init__(self, data: Dict[str, torch.Tensor], action_len: int, discount: float):
+    def __init__(self, data: dict[str, torch.Tensor], action_len: int, discount: float) -> None:
         self.data = data
         self.action_len = action_len
         self.discount = discount
@@ -111,13 +109,13 @@ class CubeDataset(Dataset):
         self.size = len(self.valid_starts)
         self.terminal_locs = np.where(terminals == 1)[0]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.valid_starts)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
         return self.sample(idx)
 
-    def sample(self, batch_size: int):
+    def sample(self, batch_size: int) -> dict[str, torch.Tensor]:
         idxs = torch.randint(0, self.size, (batch_size,))
         starts = self.valid_starts[idxs]
         ends = starts + self.action_len
@@ -145,7 +143,7 @@ class CubeDataset(Dataset):
         }
 
 
-def load_data_dict(cfg: DictConfig, training: bool = True):
+def load_data_dict(cfg: DictConfig, training: bool = True) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray]]:
     """Load data dictionaries from dataset"""
     dataset_name = cfg.dataset.name
     dataset_dir = cfg.dataset.dir
@@ -220,7 +218,7 @@ def load_data_dict(cfg: DictConfig, training: bool = True):
     return train_dict, val_dict
 
 
-def get_libero_dataset(cfg: DictConfig, training: bool = True, debug: bool = False):
+def get_libero_dataset(cfg: DictConfig, training: bool = True, debug: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     benchmark_name = cfg.name
     benchmark_dict = benchmark.get_benchmark_dict()
 

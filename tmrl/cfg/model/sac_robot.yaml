@@ -10,6 +10,7 @@ action_len: ${dataset.action_len}
 use_autotune: ${use_autotune}
 noise_bound: ${noise_bound}
 context_noise_bound: ${context_noise_bound}
+timestep_bound: ${timestep_max}
 context_dim: 2048
 
 hidden_dim: 512
@@ -19,8 +20,4 @@ n_layers: 3
 discount: ${dataset.discount}
 tau: 0.005
 
-critic_updates_per_step: 20
-actor_updates_per_step: 5
-
-use_noise_critic: False
-fixed_tcont_context: ${fixed_tcont_context}
+critic_updates_per_actor_update: 20

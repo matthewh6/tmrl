@@ -1,7 +1,7 @@
 import gymnasium
-from gymnasium import spaces
 import gym
 from gym.utils import seeding
+from typing import Callable
 
 import math
 import numpy as np
@@ -10,10 +10,6 @@ import os
 from functools import partial
 from tmrl.utils.logging import cprint
 from gymnasium.spaces import Box
-
-# LIBERO and openpi_client are imported lazily inside make_libero_env / setup_libero_envs /
-# LIBEROInfoWrapper so that importing this module (e.g. via tmrl.utils.eval) does not require
-# those packages unless a LIBERO env is actually created.
 
 # Need to set the multiprocessing start method to 'spawn' to avoid the error: https://github.com/Lifelong-Robot-Learning/LIBERO/issues/3#issuecomment-1868387638
 import multiprocessing
@@ -31,20 +27,20 @@ class MazeInfoWrapper(gymnasium.Wrapper):
     - goal: oracle goal (x, y) representation
     """
 
-    def __init__(self, env):
+    def __init__(self, env: object) -> None:
         super().__init__(env)
         self.observation_space = Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32)
 
-    def _make_obs(self):
+    def _make_obs(self) -> np.ndarray:
         obs = self.env.unwrapped.get_xy().astype(np.float32)
         goal = self.env.unwrapped.get_oracle_rep().astype(np.float32)
         return np.concatenate([obs, goal])
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: object) -> tuple[np.ndarray, dict[str, object]]:
         _, info = self.env.reset(**kwargs)
         return self._make_obs(), info
 
-    def step(self, action):
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
         _, reward, terminated, truncated, info = self.env.step(action)
         return self._make_obs(), reward, terminated, truncated, info
 
@@ -55,7 +51,7 @@ class CubeInfoWrapper(gymnasium.Wrapper):
     Goal is also stored in info['goal'] for separate access by the flow policy.
     """
 
-    def __init__(self, env, goal_dim: int):
+    def __init__(self, env: object, goal_dim: int) -> None:
         super().__init__(env)
         obs_dim = env.observation_space.shape[0]
         self.goal_dim = goal_dim
@@ -63,23 +59,23 @@ class CubeInfoWrapper(gymnasium.Wrapper):
             low=-np.inf, high=np.inf, shape=(obs_dim + goal_dim,), dtype=np.float32
         )
 
-    def _get_goal(self):
+    def _get_goal(self) -> np.ndarray:
         return self.env.unwrapped.cur_task_info['goal_xyzs'].flatten().astype(np.float32)
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: object) -> tuple[np.ndarray, dict[str, object]]:
         obs, info = self.env.reset(**kwargs)
         goal = self._get_goal()
         info['goal'] = goal
         return np.concatenate([obs.astype(np.float32), goal]), info
 
-    def step(self, action):
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict[str, object]]:
         obs, reward, terminated, truncated, info = self.env.step(action)
         goal = self._get_goal()
         info['goal'] = goal
         return np.concatenate([obs.astype(np.float32), goal]), reward, terminated, truncated, info
 
 
-def _quat2axisangle(quat):
+def _quat2axisangle(quat: np.ndarray) -> np.ndarray:
     """
     Copied from robosuite: https://github.com/ARISE-Initiative/robosuite/blob/eafb81f54ffc104f905ee48a16bb15f059176ad3/robosuite/utils/transform_utils.py#L490C1-L512C55
     """
@@ -103,7 +99,7 @@ class LIBEROInfoWrapper:
     Returns a dict with 'state' key added to observations (or combined with existing dict).
     """
 
-    def __init__(self, env):
+    def __init__(self, env: object) -> None:
         # Manually set self.env instead of using super().__init__() to avoid
         # gymnasium.Wrapper's check that requires env to be a gymnasium.Env
         # OffScreenRenderEnv inherits from ControlEnv, not gymnasium.Env
@@ -125,24 +121,22 @@ class LIBEROInfoWrapper:
         self._completed_goal_states = set()
 
         # metadata
-        self.lang_embeds_dict = None
-        self.init_states = None
         self.task_id = None
         self.task_suite = None
 
         self.np_random, _ = seeding.np_random(None)  # ensures we get unique random numbers for each worker
 
-    def get_robot_state_vector(self, obs_dict):
+    def get_robot_state_vector(self, obs_dict: dict[str, np.ndarray]) -> np.ndarray:
         return np.concatenate(
             [obs_dict['robot0_eef_pos'], _quat2axisangle(obs_dict['robot0_eef_quat']), obs_dict['robot0_gripper_qpos']]
         )
 
-    def get_data_robot_state_vector(self, obs_dict):
+    def get_data_robot_state_vector(self, obs_dict: dict[str, np.ndarray]) -> np.ndarray:
         return np.concatenate(
             [obs_dict['robot0_gripper_qpos'], obs_dict['robot0_eef_pos'], obs_dict['robot0_eef_quat']]
         )
 
-    def reset(self, **kwargs):
+    def reset(self, **kwargs: object) -> tuple[dict[str, object], dict[str, object]]:
         self._completed_goal_states = set()  # reset completed goal states
 
         self.env.seed(0)  # IMPORTANT: object locations are different if we don't seed (even for the same initial state)
@@ -173,7 +167,7 @@ class LIBEROInfoWrapper:
             'prompt': self.env.language_instruction,
         }, {'language_instruction': self.env.language_instruction, 'data_state': data_state}
 
-    def step(self, action):
+    def step(self, action: np.ndarray) -> tuple[dict[str, object], np.float64, bool, bool, dict[str, object]]:
         obs_dict, reward, done, _ = self.env.step(action)
 
         # Get preprocessed image
@@ -202,11 +196,18 @@ class LIBEROInfoWrapper:
             {'language_instruction': self.env.language_instruction, 'data_state': data_state},
         )
 
-    def close(self):
+    def close(self) -> None:
         self.env.close()
 
 
-def make_libero_env(dataset_name, task_id=0, height=256, width=256, wrap_env=True,**kwargs):
+def make_libero_env(
+    dataset_name: str,
+    task_id: int = 0,
+    height: int = 256,
+    width: int = 256,
+    wrap_env: bool = True,
+    **kwargs: object,
+) -> object:
     from libero.libero import benchmark, get_libero_path
     from libero.libero.envs import OffScreenRenderEnv
 
@@ -237,20 +238,19 @@ def make_libero_env(dataset_name, task_id=0, height=256, width=256, wrap_env=Tru
     # Attach metadata
     env.task_id = task_id
     env.task_suite = task_suite
-    env.init_states = task_suite.get_task_init_states(task_id)
 
     return env
 
 
 def create_env(
-    dataset_name,
-    seed=42,
-    wrappers=None,
-    task_id=None,
-    height=256,
-    width=256,
-    **kwargs,
-):
+    dataset_name: str,
+    seed: int = 42,
+    wrappers: list[Callable[[object], object]] | None = None,
+    task_id: int | None = None,
+    height: int = 256,
+    width: int = 256,
+    **kwargs: object,
+) -> object:
     """Create a single environment instance."""
     if 'pointmaze' in dataset_name:
         env = ogbench.make_env_and_datasets(dataset_name, env_only=True, height=height, width=width, **kwargs)
@@ -284,8 +284,14 @@ def create_env(
 
 
 def setup_envs(
-    cfg, n_envs, dataset_name, task_id=None, height=256, width=256, **kwargs
-):
+    cfg: object,
+    n_envs: int,
+    dataset_name: str,
+    task_id: int | None = None,
+    height: int = 256,
+    width: int = 256,
+    **kwargs: object,
+) -> object:
     log(f'Setting up environments for {dataset_name}')
 
     is_libero = 'libero' in dataset_name
@@ -358,7 +364,14 @@ def setup_envs(
     return env, eval_env
 
 
-def setup_libero_envs(cfg, n_envs, dataset_name, height=128, width=128, **kwargs):
+def setup_libero_envs(
+    cfg: object,
+    n_envs: int,
+    dataset_name: str,
+    height: int = 128,
+    width: int = 128,
+    **kwargs: object,
+) -> object:
     """
     Inputs:
         cfg: Configuration object
@@ -395,54 +408,3 @@ def setup_libero_envs(cfg, n_envs, dataset_name, height=128, width=128, **kwargs
 
     env.reset()
     return env
-
-
-def project_world_to_image(p_world, dataset_name, env=None, cam_name=None, img_shape=(128, 128)):
-    """
-    Project a 3D world point to pixel coords using env camera intrinsics/extrinsics.
-
-    If env is not provided and dataset is libero, falls back to hardcoded agentview params.
-    """
-    import mujoco
-
-    # Choose default camera
-    if cam_name is None:
-        cam_name = 'agentview' if 'libero' in dataset_name else 'front_pixels'
-
-    # If we have an env with sim/model, use it
-    # Fallback hardcoded params for libero if no env provided
-    if 'libero' in dataset_name:
-        cam_pos = np.array([0.60657737, 0.0, 0.96])
-        cam_mat = np.array(
-            [
-                [-1.72339050e-06, -5.28769744e-01, 8.48765314e-01],
-                [1.00000000e00, -7.82314965e-07, 1.54309560e-06],
-                [-1.51940455e-07, 8.48765314e-01, 5.28769744e-01],
-            ]
-        )
-        fovy = 45.0
-    else:
-        model = env.model
-        data = env.data
-
-        cam_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_CAMERA, cam_name)
-        cam_pos = data.cam_xpos[cam_id]
-        cam_mat = data.cam_xmat[cam_id].reshape(3, 3)  # camera → world
-        fovy = model.cam_fovy[cam_id]
-
-    p_cam = cam_mat.T @ (p_world - cam_pos)
-    if p_cam[2] >= 0:
-        return None, None
-
-    H, W = img_shape
-    f = 0.5 * H / np.tan(0.5 * np.deg2rad(fovy))
-
-    depth = -p_cam[2]
-    if 'libero' in dataset_name:
-        u = (-f * p_cam[0] / depth) + W / 2
-        v = (-f * p_cam[1] / depth) + H / 2
-    else: # ogbench
-        u = (f * p_cam[0] / depth) + W / 2
-        v = (-f * p_cam[1] / depth) + H / 2
-
-    return u, v

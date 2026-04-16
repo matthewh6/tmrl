@@ -4,11 +4,12 @@ method: ${method}
 obs_dim: ${dataset.obs_dim}
 state_dim: ${dataset.state_dim}
 action_dim: ${actor_action_dim}
-action_len: 1 # TODO: action noise
+action_len: 1 # following dsrl convention of predicting a vector and repeating for chunk_len
 
 use_autotune: ${use_autotune}
 noise_bound: ${noise_bound}
 context_noise_bound: ${context_noise_bound}
+timestep_bound: ${timestep_max}
 context_dim: ${dataset.context_dim}
 
 hidden_dim: 1024
@@ -19,5 +20,3 @@ discount: ${dataset.discount}
 tau: 0.005
 
 critic_updates_per_actor_update: 20
-use_noise_critic: False
-fixed_tcont_context: ${fixed_tcont_context}

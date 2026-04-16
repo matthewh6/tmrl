@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import torch
+from typing import Any
 from typing import List
 
 from tmrl.utils.common import to_tensor
@@ -11,7 +12,9 @@ from tmrl.utils.logging import cprint
 log = lambda msg, color='bright_cyan': cprint(msg, color)
 
 
-def flush_traj_to_buffer(traj_data, env_id, terminated, rb):
+def flush_traj_to_buffer(
+    traj_data: list[dict[str, list[Any]]], env_id: int, terminated: bool | np.ndarray, rb: "TrajectoryReplayBuffer"
+) -> None:
     """Add completed trajectory to the appropriate replay buffer."""
     traj_len = len(traj_data[env_id]['action'])
 
@@ -58,7 +61,7 @@ class TrajectoryReplayBuffer:
         goal_dim: int = 0,
         use_success_buffer: bool = False,
         discount: float = 0.995,
-    ):
+    ) -> None:
         super().__init__()
         self.method = method
 
@@ -167,7 +170,7 @@ class TrajectoryReplayBuffer:
         self.idx[env_idx] += T
         self._valid_ranges_dirty = True
 
-    def _rebuild_valid_ranges(self, H: int):
+    def _rebuild_valid_ranges(self, H: int) -> None:
         """Rebuild the flat array of valid (env_idx, traj_start, traj_end) tuples."""
         ranges = []
         for env_idx, trajs in enumerate(self.traj_start_idx):
@@ -187,7 +190,7 @@ class TrajectoryReplayBuffer:
             self._valid_ranges = np.empty((0, 3), dtype=np.int64)
         self._valid_ranges_dirty = False
 
-    def sample(self, batch_size: int):
+    def sample(self, batch_size: int) -> dict[str, torch.Tensor | None]:
         """
         Samples a batch of sequences from the buffer (and success buffer if available).
 

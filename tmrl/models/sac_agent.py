@@ -1,13 +1,12 @@
 import torch
 from torch import Tensor
-from typing import Tuple, Dict, Any
+from typing import Dict
 from copy import deepcopy
 import torch.nn as nn
 import torch.nn.functional as F
 from tmrl.utils.logging import cprint
 from tmrl.models.common.utils import SinusoidalPosEmb
 import itertools
-import numpy as np
 import time
 
 log = lambda msg, color='bright_green': cprint(msg, color)
@@ -17,7 +16,7 @@ LOG_STD_MAX = 2
 LOG_STD_MIN = -5
 
 
-def create_optimizers(model, cfg):
+def create_optimizers(model: object, cfg: object) -> dict[str, torch.optim.Optimizer]:
     optimizers = {
         'qf': torch.optim.Adam(
             itertools.chain(*[q.parameters() for q in model.critic_ensemble]),
@@ -55,14 +54,11 @@ class SACAgent(nn.Module):
         discount: float = 0.99,
         tau: float = 0.005,
         critic_updates_per_actor_update: int = 1,
-        use_noise_critic: bool = False,
-        fixed_tcont_context: float = None,
-    ):
+    ) -> None:
         super().__init__()
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         self.method = method
-        self.fixed_tcont_context = fixed_tcont_context
 
         self.obs_dim = obs_dim
         self.state_dim = state_dim
@@ -84,12 +80,11 @@ class SACAgent(nn.Module):
         self.tau = tau
         
         self.critic_updates_per_actor_update = critic_updates_per_actor_update
-        self.use_noise_critic = use_noise_critic
 
         log(f'discount: {self.discount}')
         log(f'action_len: {self.action_len}')
 
-    def initialize(self):
+    def initialize(self) -> None:
         """Initialize entropy, actor, and critic networks"""
 
         # Entropy
@@ -147,13 +142,15 @@ class SACAgent(nn.Module):
         self,
         obs: Tensor,
         actions: Tensor,
-        timesteps: Tensor,
-        context_noises: Tensor,
+        timesteps: Tensor | None,
+        context_noises: Tensor | None,
         next_obs: Tensor,
         rewards: Tensor,
         terminals: Tensor,
-        log_dict: dict = None,
-    ):
+        log_dict: dict[str, object] | None = None,
+    ) -> tuple[Tensor, dict[str, object]]:
+        if log_dict is None:
+            log_dict = {}
         with torch.no_grad():
             next_actions, next_log_prob, _ = self.actor.get_action(next_obs)
             next_actions, next_timesteps, next_context_noises = next_actions
@@ -183,28 +180,7 @@ class SACAgent(nn.Module):
                 )
 
             next_q_target = next_q_targets.min(dim=0).values
-            # target_q = rewards + (1 - terminals) * (self.discount**self.action_len) * (next_q_target - entropy_bonus)
             target_q = rewards + (1 - terminals) * (self.discount**self.action_len) * next_q_target
-
-            # # Subtract entropy from target
-            # if self.use_autotune:
-            #     alpha_a = self.log_alpha_a.detach().exp()
-            #     alpha_t = self.log_alpha_t.detach().exp()
-            #     alpha_c = self.log_alpha_c.detach().exp()
-            # else:
-            #     alpha_a, alpha_t, alpha_c = self.alpha_a, self.alpha_t, self.alpha_c
-
-            # entropy_bonus = alpha_a * next_log_prob_a
-            # if self.method == 'tmrl':
-            #     entropy_bonus = entropy_bonus + alpha_t * next_log_prob_t + alpha_c * next_log_prob_p
-            
-            # next_q_target = next_q_targets.min(dim=0).values
-            # target_q = rewards + (1 - terminals) * (self.discount ** self.action_len) * (
-            #     next_q_target - entropy_bonus
-            # )
-
-            # next_q_target = next_q_targets.min(dim=0).values
-            # target_q = rewards + (1 - terminals) * (self.discount**self.action_len) * next_q_target
 
         # Only use the first action from the chunk for Q(s_t, a_t)
         actions_q = actions[:, :self.action_len, :]
@@ -229,16 +205,16 @@ class SACAgent(nn.Module):
     def compute_actor_and_alpha_loss(
         self,
         obs: Tensor,
-        log_dict: dict = None,
-    ):
+        log_dict: dict[str, object] | None = None,
+    ) -> tuple[
+        Tensor, Tensor | float | None, Tensor | float | None, Tensor | float | None, dict[str, object]
+    ]:
+        if log_dict is None:
+            log_dict = {}
         actions, log_prob, _ = self.actor.get_action(obs)
         actions, timesteps, context_noises = actions
         actions = actions.unsqueeze(1).repeat(1, self.action_len, 1)
         log_prob_a, log_prob_t, log_prob_p = log_prob
-
-        # Fixed tcont_context: zero out timestep log_prob so it doesn't affect actor/alpha loss
-        if self.fixed_tcont_context is not None and log_prob_t is not None:
-            log_prob_t = torch.zeros_like(log_prob_t)
 
         qs = self.get_q(
             obs=obs,
@@ -331,16 +307,16 @@ class SACAgent(nn.Module):
         self,
         obs: Tensor,
         actions: Tensor,
-        timesteps: Tensor,
-        context_noises: Tensor,
+        timesteps: Tensor | None,
+        context_noises: Tensor | None,
         next_obs: Tensor,
         rewards: Tensor,
         terminals: Tensor,
-        optimizers: dict = None,
-    ) -> Dict[str, Any]:
+        optimizers: dict[str, torch.optim.Optimizer] | None = None,
+    ) -> Dict[str, object]:
         log_dict = {}
 
-        def _slice_batch(x, idx):
+        def _slice_batch(x: object, idx: Tensor) -> object:
             if x is None:
                 return None
             if isinstance(x, dict):
@@ -395,11 +371,9 @@ class SACAgent(nn.Module):
             optimizers['alpha_a'].step()
 
             if self.method == 'tmrl':
-                if self.fixed_tcont_context is None:
-                    optimizers['alpha_t'].zero_grad()
-                    alpha_t_loss.backward()
-                    optimizers['alpha_t'].step()
-
+                optimizers['alpha_t'].zero_grad()
+                alpha_t_loss.backward()
+                optimizers['alpha_t'].step()
                 optimizers['alpha_c'].zero_grad()
                 alpha_c_loss.backward()
                 optimizers['alpha_c'].step()
@@ -410,9 +384,9 @@ class SACAgent(nn.Module):
         self,
         obs: Tensor,
         actions: Tensor,
-        timesteps: Tensor = None,
-        context_noises: Tensor = None,
-    ) -> Tuple[Tensor, Tensor]:
+        timesteps: Tensor | None = None,
+        context_noises: Tensor | None = None,
+    ) -> Tensor:
         """Get Q-values from the noise Q-function networks"""
 
         qs = torch.stack(
@@ -425,9 +399,9 @@ class SACAgent(nn.Module):
         self,
         obs: Tensor,
         actions: Tensor,
-        timesteps: Tensor = None,
-        context_noises: Tensor = None,
-    ) -> Tuple[Tensor, Tensor]:
+        timesteps: Tensor | None = None,
+        context_noises: Tensor | None = None,
+    ) -> Tensor:
         """Get target Q-values from the target Q-function networks"""
 
         qs = torch.stack(
@@ -452,16 +426,16 @@ class SACAgent(nn.Module):
 class Actor(nn.Module):
     def __init__(
         self,
-        method,
-        obs_dim,
-        state_dim,
-        action_dim,
-        noise_bound=1.0,
-        context_noise_bound=1.0,
-        timestep_bound=1.0,
-        context_dim=2048,
-        hidden_dim=256,
-    ):
+        method: str,
+        obs_dim: int,
+        state_dim: int,
+        action_dim: int,
+        noise_bound: float = 1.0,
+        context_noise_bound: float = 1.0,
+        timestep_bound: float = 1.0,
+        context_dim: int = 2048,
+        hidden_dim: int = 256,
+    ) -> None:
         super().__init__()
         self.method = method
 
@@ -504,7 +478,12 @@ class Actor(nn.Module):
         self.register_buffer('context_scale', torch.tensor(context_noise_bound, dtype=torch.float32))
         self.register_buffer('context_bias', torch.tensor(0.0, dtype=torch.float32))
 
-    def forward(self, x: Tensor):
+    def forward(
+        self, x: Tensor
+    ) -> tuple[
+        tuple[Tensor, Tensor | None, Tensor | None],
+        tuple[Tensor, Tensor | None, Tensor | None],
+    ]:
         h = self.net(x)
 
         # Noise action distribution
@@ -532,7 +511,11 @@ class Actor(nn.Module):
     def get_action(
         self,
         obs: Tensor,
-    ):
+    ) -> tuple[
+        tuple[Tensor, Tensor | None, Tensor | None],
+        tuple[Tensor, Tensor | None, Tensor | None],
+        tuple[Tensor, Tensor | None, Tensor | None],
+    ]:
         """Sample actions + compute log-probs."""
         (mu_a, mu_t, mu_p), (log_std_a, log_std_t, log_std_p) = self(obs)
 
@@ -587,50 +570,20 @@ class Actor(nn.Module):
 
         return (actions_a, actions_t, actions_p), (log_prob_a, log_prob_t, log_prob_p), (mu_a, mu_t, mu_p)
 
-    def evaluate_actions(self, obs, actions_a, actions_t=None, actions_p=None):
-        """
-        Compute log-prob and entropy of previously sampled actions under the current policy.
-        Used for PPO re-evaluation.  Inverts the tanh squashing to recover pre-tanh samples.
-        """
-        (mu_a, mu_t, mu_p), (log_std_a, log_std_t, log_std_p) = self(obs)
-
-        def _log_prob_squashed(mu, log_std, actions, scale, bias):
-            std = log_std.exp()
-            dist = torch.distributions.Normal(mu, std)
-            y = (actions - bias) / scale
-            y = y.clamp(-1 + 1e-6, 1 - 1e-6)
-            x = torch.atanh(y)
-            lp = dist.log_prob(x)
-            lp -= torch.log(scale * (1 - y.pow(2)) + 1e-6)
-            lp = lp.mean(dim=1, keepdim=True)
-            # Gaussian entropy (pre-squash approximation, standard PPO convention)
-            ent = dist.entropy().mean(dim=1, keepdim=True)
-            return lp, ent
-
-        lp_a, ent_a = _log_prob_squashed(mu_a, log_std_a, actions_a, self.action_scale, self.action_bias)
-
-        if self.method == 'tmrl':
-            lp_t, ent_t = _log_prob_squashed(mu_t, log_std_t, actions_t, self.timestep_scale, self.timestep_bias)
-            lp_p, ent_p = _log_prob_squashed(mu_p, log_std_p, actions_p, self.context_scale, self.context_bias)
-        else:
-            lp_t = ent_t = lp_p = ent_p = None
-
-        return (lp_a, lp_t, lp_p), (ent_a, ent_t, ent_p)
-
 
 class SoftQNetwork(nn.Module):
     def __init__(
         self,
-        method,
-        obs_dim,
-        state_dim,
-        action_dim,
-        action_len,
-        hidden_dim=256,
-        n_layers=2,
-        context_dim=2048,
-        num_train_timesteps=100, # TODO: set this based on the checkpoint
-    ):
+        method: str,
+        obs_dim: int,
+        state_dim: int,
+        action_dim: int,
+        action_len: int,
+        hidden_dim: int = 256,
+        n_layers: int = 2,
+        context_dim: int = 2048,
+        num_train_timesteps: int = 100,  # TODO: set this based on the checkpoint
+    ) -> None:
         super().__init__()
         self.method = method
 
@@ -658,8 +611,8 @@ class SoftQNetwork(nn.Module):
         self,
         obs: Tensor,
         actions: Tensor,
-        timesteps: Tensor = None,
-        context_noises: Tensor = None,
+        timesteps: Tensor | None = None,
+        context_noises: Tensor | None = None,
     ) -> Tensor:
 
         # Flatten inputs to a vector

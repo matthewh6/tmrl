@@ -6,4 +6,4 @@ action_dim: 7
 action_len: 32
 
 defaults:
-- base_robot
+  - base_robot

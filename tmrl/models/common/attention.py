@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 
 from .utils import apply_rotary_embed
 
@@ -8,14 +9,16 @@ from .utils import apply_rotary_embed
 class MLP(nn.Module):
     """Multilayer perceptron with two hidden layers."""
 
-    def __init__(self, in_dim, hidden_dim, out_dim, act=nn.GELU, drop=0.0):
+    def __init__(
+        self, in_dim: int, hidden_dim: int, out_dim: int, act: type[nn.Module] = nn.GELU, drop: float = 0.0
+    ) -> None:
         super().__init__()
         self.fc1 = nn.Linear(in_dim, hidden_dim)
         self.act = act()
         self.fc2 = nn.Linear(hidden_dim, out_dim)
         self.drop = nn.Dropout(drop)
 
-    def forward(self, x):
+    def forward(self, x: Tensor) -> Tensor:
         x = self.fc1(x)
         x = self.act(x)
         x = self.drop(x)
@@ -29,15 +32,15 @@ class Attention(nn.Module):
 
     def __init__(
         self,
-        dim,
-        num_heads=8,
-        qkv_bias=False,
-        attn_drop=0.0,
-        proj_drop=0.0,
-        is_causal=False,
-        causal_block=1,
-        use_sdpa=True,
-    ):
+        dim: int,
+        num_heads: int = 8,
+        qkv_bias: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+        is_causal: bool = False,
+        causal_block: int = 1,
+        use_sdpa: bool = True,
+    ) -> None:
         super().__init__()
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
@@ -60,7 +63,7 @@ class Attention(nn.Module):
                 requires_grad=False,
             )
 
-    def forward(self, x, pos_embed=None, attn_mask=None):
+    def forward(self, x: Tensor, pos_embed: Tensor | None = None, attn_mask: Tensor | None = None) -> Tensor:
         B, N, D = x.shape
 
         # Attention mask has shape (B, N, N) and dtype torch.bool where a
@@ -107,17 +110,17 @@ class AttentionBlock(nn.Module):
 
     def __init__(
         self,
-        dim,
-        num_heads=8,
-        mlp_ratio=4.0,
-        qkv_bias=False,
-        drop=0.0,
-        attn_drop=0.0,
-        act=nn.GELU,
-        norm=nn.LayerNorm,
-        is_causal=False,
-        causal_block=1,
-    ):
+        dim: int,
+        num_heads: int = 8,
+        mlp_ratio: float = 4.0,
+        qkv_bias: bool = False,
+        drop: float = 0.0,
+        attn_drop: float = 0.0,
+        act: type[nn.Module] = nn.GELU,
+        norm: type[nn.Module] = nn.LayerNorm,
+        is_causal: bool = False,
+        causal_block: int = 1,
+    ) -> None:
         super().__init__()
         self.norm1 = norm(dim)
         self.attn = Attention(
@@ -138,7 +141,7 @@ class AttentionBlock(nn.Module):
             drop=drop,
         )
 
-    def forward(self, x, pos_embed=None, attn_mask=None):
+    def forward(self, x: Tensor, pos_embed: Tensor | None = None, attn_mask: Tensor | None = None) -> Tensor:
         x = x + self.attn(self.norm1(x), pos_embed, attn_mask)
         x = x + self.mlp(self.norm2(x))
         return x
@@ -149,13 +152,13 @@ class CrossAttention(nn.Module):
 
     def __init__(
         self,
-        dim,
-        num_heads=8,
-        qkv_bias=False,
-        attn_drop=0.0,
-        proj_drop=0.0,
-        use_spda=True,
-    ):
+        dim: int,
+        num_heads: int = 8,
+        qkv_bias: bool = False,
+        attn_drop: float = 0.0,
+        proj_drop: float = 0.0,
+        use_spda: bool = True,
+    ) -> None:
         super().__init__()
         self.num_heads = num_heads
         self.head_dim = dim // num_heads
@@ -166,7 +169,9 @@ class CrossAttention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
         self.use_spda = use_spda
 
-    def forward(self, x, c, x_pos_embed=None, c_pos_embed=None):
+    def forward(
+        self, x: Tensor, c: Tensor, x_pos_embed: Tensor | None = None, c_pos_embed: Tensor | None = None
+    ) -> Tensor:
         B, Nx, D = x.shape
         q = self.q(x).reshape(B, Nx, self.num_heads, D // self.num_heads).permute(0, 2, 1, 3)
         if x_pos_embed is not None:
@@ -200,15 +205,15 @@ class CrossAttentionBlock(nn.Module):
 
     def __init__(
         self,
-        dim,
-        num_heads=8,
-        mlp_ratio=4.0,
-        qkv_bias=False,
-        drop=0.0,
-        attn_drop=0.0,
-        act=nn.GELU,
-        norm=nn.LayerNorm,
-    ):
+        dim: int,
+        num_heads: int = 8,
+        mlp_ratio: float = 4.0,
+        qkv_bias: bool = False,
+        drop: float = 0.0,
+        attn_drop: float = 0.0,
+        act: type[nn.Module] = nn.GELU,
+        norm: type[nn.Module] = nn.LayerNorm,
+    ) -> None:
         super().__init__()
         self.norm1 = norm(dim)
         self.xattn = CrossAttention(
@@ -227,7 +232,7 @@ class CrossAttentionBlock(nn.Module):
             drop=drop,
         )
 
-    def forward(self, x, c, x_pos_embed=None, c_pos_embed=None):
+    def forward(self, x: Tensor, c: Tensor, x_pos_embed: Tensor | None = None, c_pos_embed: Tensor | None = None) -> Tensor:
         x = x + self.xattn(x, self.norm1(c), x_pos_embed, c_pos_embed)
         x = x + self.mlp(self.norm2(x))
         return x
@@ -241,17 +246,17 @@ class MixedAttentionBlock(nn.Module):
 
     def __init__(
         self,
-        dim,
-        num_heads=8,
-        mlp_ratio=4.0,
-        qkv_bias=False,
-        drop=0.0,
-        attn_drop=0.0,
-        act=nn.GELU,
-        norm=nn.LayerNorm,
-        is_causal=False,
-        causal_block=1,
-    ):
+        dim: int,
+        num_heads: int = 8,
+        mlp_ratio: float = 4.0,
+        qkv_bias: bool = False,
+        drop: float = 0.0,
+        attn_drop: float = 0.0,
+        act: type[nn.Module] = nn.GELU,
+        norm: type[nn.Module] = nn.LayerNorm,
+        is_causal: bool = False,
+        causal_block: int = 1,
+    ) -> None:
         super().__init__()
         self.norm1 = norm(dim)
         self.attn = Attention(
@@ -280,7 +285,7 @@ class MixedAttentionBlock(nn.Module):
             drop=drop,
         )
 
-    def forward(self, x, c, x_pos_embed=None, c_pos_embed=None):
+    def forward(self, x: Tensor, c: Tensor, x_pos_embed: Tensor | None = None, c_pos_embed: Tensor | None = None) -> Tensor:
         x = x + self.attn(self.norm1(x), x_pos_embed)
         x = x + self.xattn(self.norm2(x), c, x_pos_embed, c_pos_embed)
         x = x + self.mlp(self.norm3(x))

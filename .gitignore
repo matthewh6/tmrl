@@ -1,12 +1,10 @@
 __pycache__/
-cfg/local/
 outputs/
 wandb/
 multirun/
 results/
 datasets/
 scripts/
-cfg/local/default.yaml
 
 *.png
 *.mp4
