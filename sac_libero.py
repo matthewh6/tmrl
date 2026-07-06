@@ -128,12 +128,8 @@ def main(cfg: object) -> None:
 
     sep = '=' * 70
     log(f'{sep}\nTraining/Environment dimensions:\n{sep}')
-    log(
-        f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | action_exec_len: {action_exec_len}'
-    )
-    log(
-        f'noise_bound: {cfg.noise_bound} | timestep_max: {cfg.timestep_max} | context_noise_bound: {cfg.context_noise_bound}'
-    )
+    log(f'obs_dim: {obs_dim} | state_dim: {state_dim} | action_dim: {action_dim} | action_len: {action_len} | action_exec_len: {action_exec_len}')
+    log(f'noise_bound: {cfg.noise_bound} | timestep_max: {cfg.timestep_max} | context_noise_bound: {cfg.context_noise_bound}')
     log(sep)
 
     # Replay buffers

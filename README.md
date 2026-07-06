@@ -3,17 +3,16 @@
 <div id="user-content-toc">
   <ul align="center" style="list-style: none;">
     <summary>
-      <h1>TMRL: Context-Smoothed Pre-training Enables Efficient RL via Diffusion Timestep Modulation</h1>
+      <h1>TMRL: Diffusion Timestep-Modulated Pretraining Enables Exploration for Efficient Policy Finetuning</h1>
       <h2>
-        <a href="">Paper</a> &emsp;
-        <a href="https://matthewh6.github.io/timestep-modulated-rl">Website</a> &emsp;
-        <a href="">Thread</a>
+        <a href="https://arxiv.org/abs/2605.12236v1">Paper</a> &emsp;
+        <a href="https://weirdlabuw.github.io/tmrl">Website</a> &emsp;
       </h2>
     </summary>
   </ul>
 </div>
 
-<!-- <img src="assets/teaser.svg" width="95%"> -->
+<img src="assets/teaser.jpg" width="95%">
 
 </div>
 
@@ -155,4 +154,16 @@ python3 sac_libero.py dataset=libero_90 method=rlpd actor_action_dim=7
 
 # libero-goal
 python3 sac_libero.py dataset=libero_goal perturbation=task method=rlpd actor_action_dim=7
+```
+</details>
+
+## Citation
+
+```bibtex
+@inproceedings{hong2026tmrl,
+    title  = {TMRL: Diffusion Timestep-Modulated Pretraining Enables Exploration for Efficient Policy Finetuning},
+    author = {Hong, Matthew M. and Zhang, Jesse and Nagabandi, Anusha and Gupta, Abhishek},
+    booktitle = {Robotics: Science and Systems (RSS)},
+    year   = {2026}
+}
 ```
