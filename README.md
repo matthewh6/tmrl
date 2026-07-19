@@ -62,10 +62,10 @@ cd ..
 export PYTHONPATH=./LIBERO_PRO:$PYTHONPATH
 ```
 
-### 4. Download the pretrained priors
+### 4. Download the pretrained VLA checkpoints
 
-The high-level RL commands below load a pretrained policy prior via `ckpt=<name>`, which
-resolves to `checkpoints/<name>`. Download the context-smoothed (`cspi`) priors from the
+The high-level RL commands below load a pretrained VLA via `ckpt=<name>`, which
+resolves to `checkpoints/<name>`. Download the context-smoothed (`cspi`) VLA from the
 Hugging Face Hub into `checkpoints/`:
 
 ```bash
