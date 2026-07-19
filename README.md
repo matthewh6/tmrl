@@ -62,6 +62,26 @@ cd ..
 export PYTHONPATH=./LIBERO_PRO:$PYTHONPATH
 ```
 
+### 4. Download the pretrained priors
+
+The high-level RL commands below load a pretrained policy prior via `ckpt=<name>`, which
+resolves to `checkpoints/<name>`. Download the context-smoothed (`cspi`) priors from the
+Hugging Face Hub into `checkpoints/`:
+
+```bash
+pip install -U "huggingface_hub[cli]"   # provides the `hf` CLI
+
+# real-world WidowX / Bridge prior (used by: sac_robot.py dataset=widowx)
+hf download matthewh6/cspi0_bridge --repo-type model --local-dir checkpoints/cspi0_bridge
+
+# LIBERO prior (used by: sac_libero.py)
+hf download matthewh6/cspi0_libero --repo-type model --local-dir checkpoints/cspi0_libero
+```
+
+Each checkpoint is loaded by name in `tmrl/utils/common.py:load_pi0_model`, which maps `cspi*`
+priors to the timestep-modulated `CSPi0` architecture. The default cache root is `~/.cache/openpi`;
+override it with `OPENPI_DATA_HOME` if you keep assets elsewhere.
+
 ## Low-level policy pre-training (OGBench)
 <details>
 <summary><b>Click to expand the full list of commands</b></summary>

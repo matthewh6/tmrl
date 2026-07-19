@@ -19,3 +19,6 @@ scripts/
 *.txt
 *.json
 *.sh
+
+# local checkpoint symlinks / downloads into the openpi cache (machine-specific)
+checkpoints/

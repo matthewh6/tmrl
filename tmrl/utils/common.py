@@ -149,27 +149,26 @@ def load_pi0_model(cfg: object) -> object:
 
     if 'libero' in checkpoint:
         if 'csp' in checkpoint:
-            config = _config.get_config('tmpi0_libero')
+            config = _config.get_config('cspi0_libero')
         elif 'postbc' in checkpoint:
             config = _config.get_config('postbc_libero')
         else:
             config = _config.get_config('pi0_libero')
     else:
-        if 'tmpi0' in checkpoint:
+        # 'cspi' (context-smoothed pi) checkpoints use the timestep-modulated
+        # CSPi0 architecture (cf. the libero branch: cspi -> cspi0_libero).
+        if 'cspi' in checkpoint:
             if 'lora' in checkpoint:
-                config = _config.get_config('tmpi0_lora_bridge_1_cam')
+                config = _config.get_config('cspi0_lora_bridge_1_cam')
             elif 'droid' in checkpoint:
-                config = _config.get_config('tmpi0_droid')
+                config = _config.get_config('cspi0_droid')
             else:
-                config = _config.get_config('tmpi0_bridge_1_cam')
+                config = _config.get_config('cspi0_bridge_1_cam')
         else:
             if 'lora' in checkpoint:
                 config = _config.get_config('pi0_lora_bridge_1_cam')
             elif 'droid' in checkpoint:
-                if 'cspi' in checkpoint:
-                    config = _config.get_config('tmpi0_droid')
-                else:
-                    config = _config.get_config('pi0_droid')
+                config = _config.get_config('pi0_droid')
             else:
                 config = _config.get_config('pi0_bridge_1_cam')
 
