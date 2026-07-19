@@ -11,7 +11,7 @@ paths:
 
 use_wandb: false
 wandb:
-  entity: hongmm
+  entity: null   # set to your W&B entity, or leave null to use your default
   name: "${hydra:runtime.choices.model}_${hydra:runtime.choices.dataset}_${now:%m%d_%H%M}"
   tags: null
   dir: ${paths.wandb_dir}

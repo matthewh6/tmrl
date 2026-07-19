@@ -128,24 +128,13 @@ def get_dinov3() -> nn.Module:
     """
     import os
 
-    # Set default paths
-    repo_dir = os.getenv('DINO_REPO_DIR', '/gscratch/weirdlab/hongmm/dinov3')
+    # Local dinov3 repo + weights. Set these env vars to point at your checkout.
+    repo_dir = os.getenv('DINO_REPO_DIR', os.path.expanduser('~/dinov3'))
     weights_path = os.getenv(
-        'DINO_WEIGHTS_PATH', '/gscratch/weirdlab/hongmm/dinov3/models/dinov3_vits16_pretrain_lvd1689m-08c60483.pth'
+        'DINO_WEIGHTS_PATH',
+        os.path.expanduser('~/dinov3/models/dinov3_vits16_pretrain_lvd1689m-08c60483.pth'),
     )
     dinov3 = torch.hub.load(repo_dir, 'dinov3_vits16', source='local', weights=weights_path)
-
-    # repo_dir = os.getenv('DINO_REPO_DIR', '/home/hongmm/dinov3')
-    # weights_path = os.getenv(
-    #     'DINO_WEIGHTS_PATH', #'/home/hongmm/dinov3/models/dinov3_vits16_pretrain_lvd1689m-08c60483.pth'
-    #     '/home/hongmm/dinov3/models/dinov3_vits16_pretrain_lvd1689m-08c60483 (1).pth'
-    # )
-    # dinov3 = torch.hub.load(repo_dir, 'dinov3_vits16', source='local', weights=weights_path)
-
-    # # Freeze and eval
-    # dinov3.eval()
-    # for param in dinov3.parameters():
-    #     param.requires_grad = False
 
     return dinov3
 
