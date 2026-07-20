@@ -14,6 +14,8 @@ scripts/
 *.txt
 *.hdf5
 *.lock
+# commit the resolved dependency set so installs are reproducible
+!uv.lock
 *.pdf
 *.npz
 *.txt
